@@ -1,6 +1,9 @@
 #do not store the main sources file in git, this one is created by a script
 sources.yaml
 
+#the real config should not be in git, just give an example
+config.yaml
+
 # PyInstaller
 #   Usually these files are written by a python script from a template
 #   before PyInstaller builds the exe, so as to inject date/other infos into it.
