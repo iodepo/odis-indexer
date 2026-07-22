@@ -21,3 +21,4 @@ target/
 .venv
 env/
 venv/
+.idea/
