@@ -1,4 +1,4 @@
-"""Load mvp_config.yaml for scribe (objectstore + triplestore)."""
+"""Load config.yaml for scribe (objectstore + triplestore)."""
 
 from __future__ import annotations
 

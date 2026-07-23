@@ -1,4 +1,4 @@
-"""CLI: python -m indexer --config mvp_config.yaml --source medin"""
+"""CLI: python -m indexer --config config.yaml --source medin"""
 
 from __future__ import annotations
 
@@ -14,10 +14,10 @@ from .load import run_load
 
 def _default_config_path() -> Path:
     mvp_dir = Path(__file__).resolve().parent.parent
-    candidate = mvp_dir / "mvp_config.yaml"
+    candidate = mvp_dir / "config.yaml"
     if candidate.is_file():
         return candidate
-    return Path("mvp_config.yaml")
+    return Path("config.yaml")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-c",
         type=Path,
         default=None,
-        help="Path to mvp_config.yaml",
+        help="Path to config.yaml",
     )
     parser.add_argument(
         "--source",

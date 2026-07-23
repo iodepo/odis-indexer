@@ -1,4 +1,4 @@
-"""CLI entry: python -m summoner --config mvp_config.yaml"""
+"""CLI entry: python -m summoner --config config.yaml"""
 
 from __future__ import annotations
 
@@ -13,12 +13,12 @@ from .crawl import run_crawl
 
 
 def _default_config_path() -> Path:
-    # Prefer mvp_config.yaml next to the package's parent (mvp/)
+    # Prefer config.yaml next to the package's parent (mvp/)
     mvp_dir = Path(__file__).resolve().parent.parent
-    candidate = mvp_dir / "mvp_config.yaml"
+    candidate = mvp_dir / "config.yaml"
     if candidate.is_file():
         return candidate
-    return Path("mvp_config.yaml")
+    return Path("config.yaml")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-c",
         type=Path,
         default=None,
-        help="Path to mvp_config.yaml (default: mvp/mvp_config.yaml or ./mvp_config.yaml)",
+        help="Path to config.yaml (default: mvp/config.yaml or ./config.yaml)",
     )
     parser.add_argument(
         "--source",

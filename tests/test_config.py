@@ -63,4 +63,4 @@ sources: []
 
 def test_missing_file() -> None:
     with pytest.raises(FileNotFoundError):
-        load_config("/nonexistent/mvp_config.yaml")
+        load_config("/nonexistent/config.yaml")

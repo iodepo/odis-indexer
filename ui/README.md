@@ -16,7 +16,7 @@ Minimal HTML/JS search against Elasticsearch indexes produced by `indexer`.
    ```bash
    cd ..
    source .venv/bin/activate
-   python -m indexer --config mvp_config.yaml --source medin
+   python -m indexer --config config.yaml --source medin
    ```
 
 3. Serve this folder:

@@ -1,4 +1,4 @@
-"""Load mvp_config.yaml for indexer (objectstore + search)."""
+"""Load config.yaml for indexer (objectstore + search)."""
 
 from __future__ import annotations
 

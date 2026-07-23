@@ -1,4 +1,4 @@
-"""Load and validate mvp_config.yaml."""
+"""Load and validate config.yaml."""
 
 from __future__ import annotations
 
