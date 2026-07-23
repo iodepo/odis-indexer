@@ -2,7 +2,7 @@
 
 Quickstart guide to get the full pipeline running: **summon → S3 → Oxigraph + Elasticsearch → search UI**.
 
-Assumes Docker (or compatible compose), Python ≥ 3.11, and network access to a sitemap source (default demo: **medin**).
+Assumes Docker (or compatible compose), Python ≥ 3.11, and network access to a sitemap source.
 
 ## get the source
 
@@ -82,6 +82,8 @@ print("buckets:", [b.name for b in c.list_buckets()])
 PY
 ```
 
+on first install expect [] as result, once you have run the summoner there should be a bucket named `odis`
+
 ## create the sources file
 
 make the sources file using info from https://catalogue.odis.org/
@@ -91,32 +93,37 @@ python make_sources.py
 ```
 ## Harvest JSON-LD (summoner)
 
-```bash
-# small real run (writes to S3)
-python -m summoner --config config.yaml --source medin --limit 5
+look in sources.yaml for a source name and replace [SOURCE] by this name
 
+```bash
 # dry-run only (no S3 write)
-python -m summoner --config config.yaml --source medin --limit 5 --dry-run -v
+python -m summoner --config config.yaml --source [SOURCE] --limit 5 --dry-run -v
+
+# small real run (writes to S3)
+python -m summoner --config config.yaml --source [SOURCE] --limit 5
+
 ```
 
 Objects land at:
 
 ```text
-s3://odis/summoned/medin/<sha1(page_url)>.json
+s3://odis/summoned/[SOURCE]/<sha1(page_url)>.json
 ```
 
 Metadata on each object includes harvest page URL (`source-url`).
 
 ## Load graph (scribe → Oxigraph)
 
+look in sources.yaml for a source name and replace [SOURCE] by this name
+
 ```bash
-python -m scribe --config config.yaml --source medin
+python -m scribe --config config.yaml --source [SOURCE]
 ```
 
 Named graphs:
 
-- data: `urn:odis:medin`
-- prov: `urn:odis:prov:medin` (harvest URL ↔ S3 key ↔ optional `@id`)
+- data: `urn:odis:[SOURCE]`
+- prov: `urn:odis:prov:[SOURCE]` (harvest URL ↔ S3 key ↔ optional `@id`)
 
 Check data:
 
@@ -124,7 +131,7 @@ Check data:
 curl -s -X POST http://localhost:7878/query \
   -H 'Accept: application/sparql-results+json' \
   -H 'Content-Type: application/sparql-query' \
-  --data 'SELECT (COUNT(*) AS ?c) WHERE { GRAPH <urn:odis:medin> { ?s ?p ?o } }'
+  --data 'SELECT (COUNT(*) AS ?c) WHERE { GRAPH <urn:odis:[SOURCE]> { ?s ?p ?o } }'
 ```
 
 Check provenance:
@@ -133,22 +140,22 @@ Check provenance:
 curl -s -X POST http://localhost:7878/query \
   -H 'Accept: application/sparql-results+json' \
   -H 'Content-Type: application/sparql-query' \
-  --data 'PREFIX prov: <http://www.w3.org/ns/prov#> SELECT ?harvest ?s3key WHERE { GRAPH <urn:odis:prov:medin> { ?o prov:hadPrimarySource ?harvest ; prov:value ?s3key } } LIMIT 5'
+  --data 'PREFIX prov: <http://www.w3.org/ns/prov#> SELECT ?harvest ?s3key WHERE { GRAPH <urn:odis:prov:[SOURCE]> { ?o prov:hadPrimarySource ?harvest ; prov:value ?s3key } } LIMIT 5'
 ```
 
 ## Load search (indexer → Elasticsearch)
 
 ```bash
-python -m indexer --config config.yaml --source medin
+python -m indexer --config config.yaml --source [SOURCE]
 ```
 
-Index: `odis-medin`
+Index: `odis-[SOURCE]`
 
 Check:
 
 ```bash
-curl -s 'http://localhost:9400/odis-medin/_count'
-curl -s 'http://localhost:9400/odis-medin/_search' \
+curl -s 'http://localhost:9400/odis-[SOURCE]/_count'
+curl -s 'http://localhost:9400/odis-[SOURCE]/_search' \
   -H 'Content-Type: application/json' \
   -d '{"query":{"multi_match":{"query":"topographic","fields":["name","description","keywords"]}},"_source":["name","url","source_url"]}'
 ```
@@ -174,9 +181,9 @@ docker compose -f build/docker-compose.oxigraph.yaml up -d
 docker compose -f build/docker-compose.floci.yaml up -d
 docker compose -f build/docker-compose.browserless.yaml up -d
 
-python -m summoner --config config.yaml --source medin --limit 5
-python -m scribe   --config config.yaml --source medin
-python -m indexer  --config config.yaml --source medin
+python -m summoner --config config.yaml --source [SOURCE] --limit 5
+python -m scribe   --config config.yaml --source [SOURCE]
+python -m indexer  --config config.yaml --source [SOURCE]
 
 cd ui && python -m http.server 8080
 ```
@@ -185,7 +192,7 @@ cd ui && python -m http.server 8080
 
 | Symptom | What to check |
 |---------|----------------|
-| Summoner 403 on sitemap | Source blocks bots (e.g. Cloudflare). Try `medin`; `cioos` often fails. |
+| Summoner 403 on sitemap | Source blocks bots (e.g. Cloudflare). Try `[SOURCE]`; `cioos` often fails. |
 | Summoner finds pages, no JSON-LD | Page lacks `ld+json`, or needs `headless: true` + Browserless if JS-injected. |
 | Headless 401 / connection refused | `docker compose -f build/docker-compose.browserless.yaml up -d`; match `headless_token` to compose `TOKEN`. |
 | CIOOS / Cloudflare 403 | Open-source Browserless is not a bot bypass; use API path or allowlisting. |
