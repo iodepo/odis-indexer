@@ -84,6 +84,8 @@ PY
 
 ## create the sources file
 
+make the sources file using info from https://catalogue.odis.org/
+
 ```bash
 python make_sources.py
 ```
