@@ -148,6 +148,25 @@ def _parse_source(raw: dict[str, Any]) -> SourceConfig:
     )
 
 
+def load_sources_yaml(path: str | Path) -> list[SourceConfig]:
+    """Load sources from an external YAML file (e.g. sources.yaml)."""
+    sources_path = Path(path)
+    if not sources_path.is_file():
+        return []
+
+    with sources_path.open(encoding="utf-8") as fh:
+        data = yaml.safe_load(fh)
+
+    if not isinstance(data, dict):
+        return []
+
+    raw_sources = data.get("sources") or []
+    if not isinstance(raw_sources, list):
+        return []
+
+    return [_parse_source(item) for item in raw_sources if isinstance(item, dict)]
+
+
 def load_config(path: str | Path) -> AppConfig:
     """Load and validate configuration from a YAML file."""
     config_path = Path(path)
@@ -167,4 +186,11 @@ def load_config(path: str | Path) -> AppConfig:
         raise ValueError("'sources' must be a list")
 
     sources = [_parse_source(item) for item in raw_sources if isinstance(item, dict)]
+
+    # If no sources in config.yaml, try loading from sources.yaml in same directory
+    if not sources:
+        sources_path = config_path.parent / "sources.yaml"
+        if sources_path.is_file():
+            sources = load_sources_yaml(sources_path)
+
     return AppConfig(objectstore=objectstore, summoner=summoner, sources=sources)
