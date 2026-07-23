@@ -15,12 +15,12 @@ services:
   oxigraph:
     image: ghcr.io/oxigraph/oxigraph:latest
     container_name: odis-oxigraph
-    command: ["--location", "/data", "serve", "--bind", "0.0.0.0:7878"]
     ports:
       - "7878:7878"
     volumes:
-      - oxigraph-data:/data
+      - ./oxigraph-data:/data
+    command: serve --location /data --bind 0.0.0.0:7878
     restart: unless-stopped
 
-volumes:
-  oxigraph-data:
+#volumes:
+#  oxigraph-data:
