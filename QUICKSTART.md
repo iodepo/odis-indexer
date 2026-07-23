@@ -14,7 +14,7 @@ git clone git@github.com:iodepo/odis-indexer.git
 cd odis-indexer
 ```
 
-## 1. Python env
+## Python env
 
 ```bash
 python3 -m venv .venv
@@ -22,7 +22,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## 2. Services
+## Services
 
 You need three backends. 
 
@@ -82,7 +82,12 @@ print("buckets:", [b.name for b in c.list_buckets()])
 PY
 ```
 
-## 3. Harvest JSON-LD (summoner)
+## create the sources file
+
+```bash
+python make_sources.py
+```
+## Harvest JSON-LD (summoner)
 
 ```bash
 # small real run (writes to S3)
@@ -100,7 +105,7 @@ s3://odis/summoned/medin/<sha1(page_url)>.json
 
 Metadata on each object includes harvest page URL (`source-url`).
 
-## 4. Load graph (scribe → Oxigraph)
+## Load graph (scribe → Oxigraph)
 
 ```bash
 python -m scribe --config config.yaml --source medin
@@ -129,7 +134,7 @@ curl -s -X POST http://localhost:7878/query \
   --data 'PREFIX prov: <http://www.w3.org/ns/prov#> SELECT ?harvest ?s3key WHERE { GRAPH <urn:odis:prov:medin> { ?o prov:hadPrimarySource ?harvest ; prov:value ?s3key } } LIMIT 5'
 ```
 
-## 5. Load search (indexer → Elasticsearch)
+## Load search (indexer → Elasticsearch)
 
 ```bash
 python -m indexer --config config.yaml --source medin
@@ -146,7 +151,7 @@ curl -s 'http://localhost:9400/odis-medin/_search' \
   -d '{"query":{"multi_match":{"query":"topographic","fields":["name","description","keywords"]}},"_source":["name","url","source_url"]}'
 ```
 
-## 6. Search UI
+## Search UI
 
 ```bash
 cd ui
