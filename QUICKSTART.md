@@ -56,7 +56,7 @@ CORS is enabled for the browser UI.
 
 ```bash
 docker compose -f build/docker-compose.oxigraph.yaml up -d
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:7878/
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:7878/  # expect 200
 ```
 
 ### Browserless (optional headless summoner)
