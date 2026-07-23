@@ -1,5 +1,6 @@
 #do not store the main sources file in git, this one is created by a script
 sources.yaml
+sources.yaml_*
 
 #the real config should not be in git, just give an example
 config.yaml
