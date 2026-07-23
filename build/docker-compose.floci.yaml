@@ -4,5 +4,5 @@ services:
     ports:
       - "4566:4566"
     volumes:
-      - /scratch/floci/floci-data:/app/data        # Persist data locally
+      - ./floci-data:/app/data        # Persist data locally
     restart: unless-stopped
