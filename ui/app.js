@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const cfg = window.MVP_UI_CONFIG || {};
+  const cfg = window.ODIS_UI_CONFIG || {};
   const esBase = (cfg.elasticsearch || "http://odis.org:9400").replace(/\/$/, "");
   const indexPattern = cfg.indexPattern || "odis-*";
   const size = cfg.size || 20;
@@ -145,6 +145,7 @@
         multi_match: {
           query: q,
           fields: ["name^3", "description", "keywords", "type"],
+          type: "bool_prefix",
         },
       },
       size: size,
