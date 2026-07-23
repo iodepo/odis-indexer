@@ -25,5 +25,5 @@ summoner:
     headless_block_assets: true       # skip images/fonts/media/css in headless
     headless_hybrid: true             # static first, Browserless if no JSON-LD (when source.headless)
     threads: 5
-    delay: 250          # ms between requests per worker
+    delay: 250
     user_agent: "odis-summoner/0.1"
