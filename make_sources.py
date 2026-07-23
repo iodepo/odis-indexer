@@ -30,6 +30,7 @@ def main():
         return
 
     new_sources = []
+    used_names = set()
     for rec in records:
         # Mapping fields
         # ds_name_english -> propername
@@ -39,7 +40,15 @@ def main():
         # id -> pid
         
         proper_name = rec.get("ds_name_english", "")
-        name = slugify(proper_name)
+        base_name = slugify(proper_name)
+        
+        name = base_name
+        counter = 1
+        while name in used_names:
+            name = f"{base_name}-{counter}"
+            counter += 1
+        
+        used_names.add(name)
         
         source_entry = {
             "name": name,
