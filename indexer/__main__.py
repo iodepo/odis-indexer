@@ -72,9 +72,16 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )
-    if not args.verbose:
-        logging.getLogger("elastic_transport").setLevel(logging.WARNING)
-        logging.getLogger("urllib3").setLevel(logging.WARNING)
+    # Silence noise from internal libraries even in verbose mode
+    for logger_name in [
+        "elastic_transport",
+        "urllib3",
+        "botocore",
+        "s3transfer",
+        "httpx",
+        "httpcore",
+    ]:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
 
     config_path = args.config or _default_config_path()
     try:

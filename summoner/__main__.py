@@ -81,10 +81,15 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )
-    # Quieter HTTP internals unless verbose
-    if not args.verbose:
-        logging.getLogger("httpx").setLevel(logging.WARNING)
-        logging.getLogger("httpcore").setLevel(logging.WARNING)
+    # Silence noise from internal libraries even in verbose mode
+    for logger_name in [
+        "httpx",
+        "httpcore",
+        "urllib3",
+        "botocore",
+        "s3transfer"
+    ]:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
 
     config_path = args.config or _default_config_path()
     try:
