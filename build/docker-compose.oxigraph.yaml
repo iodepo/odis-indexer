@@ -1,5 +1,4 @@
-# Local Oxigraph triplestore for MVP scribe.
-# Usage (from mvp/):
+# Local Oxigraph triplestore for scribe.
 #   docker compose -f build/docker-compose.oxigraph.yaml up -d
 #   curl -s -o /dev/null -w "%{http_code}\n" http://localhost:7878/
 #
