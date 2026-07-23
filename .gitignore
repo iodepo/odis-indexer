@@ -8,6 +8,10 @@ config.yaml
 #do not store any docker storage dirs
 build/oxigraph-data
 build/oxigraph-data/*
+build/es-data
+build/es-data/*
+build/floci-data
+build/floci-data/*
 
 # PyInstaller
 #   Usually these files are written by a python script from a template
