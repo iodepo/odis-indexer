@@ -1,0 +1,347 @@
+/* Light (default) */
+:root,
+[data-theme="light"] {
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --text: #1a1d23;
+  --muted: #5c6570;
+  --border: #e2e5ea;
+  --accent: #1f6feb;
+  --accent-hover: #1558c0;
+  --btn-text: #ffffff;
+  --error: #b42318;
+  --code-bg: color-mix(in srgb, var(--bg) 65%, var(--card));
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 4px 12px rgba(16, 24, 40, 0.04);
+  --radius: 10px;
+  color-scheme: light;
+}
+
+/* Dark */
+[data-theme="dark"] {
+  --bg: #0f1218;
+  --card: #1a1f2a;
+  --text: #e8eaed;
+  --muted: #9aa3b2;
+  --border: #2c3340;
+  --accent: #58a6ff;
+  --accent-hover: #79b8ff;
+  --btn-text: #0f1218;
+  --error: #f85149;
+  --code-bg: color-mix(in srgb, var(--bg) 55%, var(--card));
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+  --radius: 10px;
+  color-scheme: dark;
+}
+
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.theme-toggle-icon {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  box-shadow: inset -3px -2px 0 0 currentColor;
+  opacity: 0.9;
+}
+
+/* Brighter “sun” disk when already dark (click goes light) */
+[data-theme="dark"] .theme-toggle-icon {
+  background: currentColor;
+  box-shadow: none;
+  opacity: 0.95;
+}
+
+.tagline {
+  margin: 0 0 1.75rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.search-form {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.search-form input[type="search"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.search-form input[type="search"]::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.search-form input[type="search"]:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-color: var(--accent);
+}
+
+.search-form button {
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--btn-text);
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.search-form button:hover {
+  background: var(--accent-hover);
+}
+
+.search-form button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.status {
+  min-height: 1.4em;
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.status.error {
+  color: var(--error);
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  box-shadow: var(--shadow);
+}
+
+.card h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.card h2 a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.card h2 a:hover {
+  text-decoration: underline;
+}
+
+.card h2 .no-link {
+  color: var(--text);
+}
+
+.card .description {
+  margin: 0 0 0.5rem;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.card .meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.jsonld-panel {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.jsonld-panel summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.jsonld-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.jsonld-panel summary::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  margin-top: -0.1rem;
+}
+
+.jsonld-panel[open] summary::before {
+  transform: rotate(45deg);
+  margin-top: 0;
+}
+
+.jsonld-panel summary:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.jsonld-panel[open] summary {
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.jsonld-provenance {
+  margin: 0;
+  padding: 0.45rem 0.7rem 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.jsonld-provenance code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  word-break: break-all;
+}
+
+.jsonld-body {
+  margin: 0;
+  padding: 0.65rem 0.75rem 0.8rem;
+  max-height: 22rem;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--text);
+  background: transparent;
+}
+
+.jsonld-body code {
+  font-family: inherit;
+  white-space: pre;
+}
+
+.jsonld-missing {
+  margin: 0;
+  padding: 0.65rem 0.75rem 0.8rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.jsonld-missing code {
+  font-size: 0.75rem;
+}
+
+.card .meta a {
+  color: var(--muted);
+}
+
+.card .meta a:hover {
+  color: var(--accent);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 520px) {
+  .search-form {
+    flex-direction: column;
+  }
+}

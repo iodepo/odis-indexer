@@ -1,0 +1,34 @@
+---
+objectstore:
+    address: localhost
+    port: 4566
+    accessKey: test
+    secretKey: test
+    ssl: false
+    bucket: iode
+    region: us-east-1
+summoner:
+    headless: http://localhost:3000
+    headless_token: test-token
+    headless_timeout_ms: 30000
+    headless_concurrent: 1
+    headless_hybrid: true
+    threads: 2
+    delay: 100
+    user_agent: "test-summoner/0.1"
+sources:
+    - name: active_src
+      url: https://example.org/sitemap.xml
+      sourcetype: sitemap
+      active: true
+      headless: false
+    - name: inactive_src
+      url: https://example.org/other.xml
+      sourcetype: sitemap
+      active: false
+      headless: false
+    - name: headless_src
+      url: https://example.org/js-sitemap.xml
+      sourcetype: sitemap
+      active: true
+      headless: true

@@ -1,6 +1,4 @@
-# MVP pipeline tools
-
-Python stand-ins for the Gleaner / Nabu structured-data path, plus a small search UI.
+# ODIS indexer tools/flow
 
 **Start here for a fast end-to-end run:** [QUICKSTART.md](./QUICKSTART.md)
 
@@ -18,10 +16,10 @@ Sitemap / pages
               │                               │
               ▼                               ▼
      Oxigraph graphs                 Elasticsearch index
-     urn:gleaner:<source>              gleaner-<source>
-     urn:gleaner:prov:<source>                │
+     urn:odis:<source>              odis-<source>
+     urn:odis:prov:<source>                   │
                                               ▼
-                                           ui/  (browser search)
+                                    ui/  (browser search)
 ```
 
 | Package | Role |
@@ -35,7 +33,7 @@ Sitemap / pages
 
 - Python ≥ 3.11
 - Docker (compose files under `build/` for ES, Oxigraph, Browserless; S3 usually LocalStack/MinIO)
-- S3-compatible store (LocalStack, MinIO, AWS, …) — default config: `localhost:4566`, bucket `gleanerio`
+- S3-compatible store (LocalStack, MinIO, AWS, …) — default config: `localhost:4566`, bucket `iode`
 - Oxigraph for `scribe` — default `http://localhost:7878` (`build/docker-compose.oxigraph.yaml`)
 - Elasticsearch 8 for `indexer` / UI — default `http://localhost:9400` (`build/docker-compose.es.yaml`)
 
@@ -48,7 +46,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Config (`mvp_config.yaml`)
+## Config (`config.yaml`)
 
 | Node | Purpose |
 |------|---------|
@@ -64,9 +62,9 @@ pip install -r requirements.txt
 |-------|-----|
 | S3 | `summoned/<source>/<sha1(page_url)>.json` |
 | S3 metadata | `source-url` = harvest page; `source-name` = source |
-| Oxigraph (data) | Named graph `urn:gleaner:<source>` |
-| Oxigraph (prov) | Named graph `urn:gleaner:prov:<source>` |
-| Elasticsearch | Index `gleaner-<source>` (or `{index_prefix}-<source>`) |
+| Oxigraph (data) | Named graph `urn:odis:<source>` |
+| Oxigraph (prov) | Named graph `urn:odis:prov:<source>` |
+| Elasticsearch | Index `odis-<source>` (or `{index_prefix}-<source>`) |
 
 ### Provenance (how stages connect)
 
@@ -74,9 +72,9 @@ pip install -r requirements.txt
 |------|--------|
 | Harvest page URL → S3 | **Yes** — object metadata + SHA1 key |
 | S3 → Elasticsearch | **Yes** — `s3_key`, plus `source_url` from metadata |
-| S3 / ES → Oxigraph (source) | **Yes** — shared `urn:gleaner:<source>` |
+| S3 / ES → Oxigraph (source) | **Yes** — shared `urn:odis:<source>` |
 | Entity `@id` across ES / graph | **When present** in JSON-LD |
-| Harvest URL in Oxigraph | **Yes** — PROV-O in `urn:gleaner:prov:<source>` (`prov:hadPrimarySource`, `prov:value` = s3 key) |
+| Harvest URL in Oxigraph | **Yes** — PROV-O in `urn:odis:prov:<source>` (`prov:hadPrimarySource`, `prov:value` = s3 key) |
 
 UI links prefer Schema.org **`url`**, then harvest **`source_url`**, then `@id` if it is `http(s)`.
 
@@ -94,9 +92,9 @@ Sitemap walk + JSON-LD extraction → S3.
 
 ```bash
 docker compose -f build/docker-compose.browserless.yaml up -d
-# TOKEN defaults to mvp-local-token (must match summoner.headless_token)
+# TOKEN defaults to odis-local-token (must match summoner.headless_token)
 curl -s -o /dev/null -w "%{http_code}\n" \
-  "http://localhost:3000/active?token=mvp-local-token"
+  "http://localhost:3000/active?token=odis-local-token"
 ```
 
 | Config key | Meaning |
@@ -110,9 +108,9 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 **Not a Cloudflare bypass.** Open-source Browserless does not solve bot walls (e.g. CIOOS HTML 403). Headless only helps when JS actually injects JSON-LD into the DOM.
 
 ```bash
-python -m summoner --config mvp_config.yaml
-python -m summoner --config mvp_config.yaml --source medin --limit 5
-python -m summoner --config mvp_config.yaml --source medin --limit 5 --dry-run -v
+python -m summoner --config config.yaml
+python -m summoner --config config.yaml --source medin --limit 5
+python -m summoner --config config.yaml --source medin --limit 5 --dry-run -v
 ```
 
 | Flag | Meaning |
@@ -132,20 +130,20 @@ Load summoned JSON-LD into Oxigraph as quads. **Replaces** both the data and pro
 
 | Graph | Contents |
 |-------|----------|
-| `urn:gleaner:<source>` | Triples from JSON-LD body |
-| `urn:gleaner:prov:<source>` | PROV-O harvest/load links (page URL, s3 key, optional `@id`) |
+| `urn:odis:<source>` | Triples from JSON-LD body |
+| `urn:odis:prov:<source>` | PROV-O harvest/load links (page URL, s3 key, optional `@id`) |
 
 Per summoned object, provenance includes roughly:
 
-- object entity `urn:gleaner:object:<source>:<sha>` with `prov:value` = S3 key
+- object entity `urn:odis:object:<source>:<sha>` with `prov:value` = S3 key
 - `prov:hadPrimarySource` → harvest page URL (from S3 `source-url` metadata)
 - `prov:wasDerivedFrom` → JSON-LD `@id` when present
-- `rdfs:seeAlso` → data graph `urn:gleaner:<source>`
-- load `prov:Activity` + agent `urn:gleaner:agent:scribe`
+- `rdfs:seeAlso` → data graph `urn:odis:<source>`
+- load `prov:Activity` + agent `urn:odis:agent:scribe`
 
 ```bash
-python -m scribe --config mvp_config.yaml --source medin
-python -m scribe --config mvp_config.yaml --source medin --limit 10 --dry-run -v
+python -m scribe --config config.yaml --source medin
+python -m scribe --config config.yaml --source medin --limit 10 --dry-run -v
 ```
 
 | Flag | Meaning |
@@ -161,7 +159,7 @@ Example SPARQL — harvest URL → S3 key → entity:
 PREFIX prov: <http://www.w3.org/ns/prov#>
 
 SELECT ?harvest ?s3key ?entity WHERE {
-  GRAPH <urn:gleaner:prov:medin> {
+  GRAPH <urn:odis:prov:medin> {
     ?obj a prov:Entity ;
          prov:value ?s3key ;
          prov:hadPrimarySource ?harvest .
@@ -176,7 +174,7 @@ Verify with SPARQL:
 curl -s -X POST http://localhost:7878/query \
   -H 'Accept: application/sparql-results+json' \
   -H 'Content-Type: application/sparql-query' \
-  --data 'SELECT (COUNT(*) AS ?c) WHERE { GRAPH <urn:gleaner:medin> { ?s ?p ?o } }'
+  --data 'SELECT (COUNT(*) AS ?c) WHERE { GRAPH <urn:odis:medin> { ?s ?p ?o } }'
 ```
 
 ---
@@ -199,8 +197,8 @@ Security is off and CORS is on for local demos only (see compose file).
 ### Run
 
 ```bash
-python -m indexer --config mvp_config.yaml --source medin
-python -m indexer --config mvp_config.yaml --source medin --limit 5 --dry-run -v
+python -m indexer --config config.yaml --source medin
+python -m indexer --config config.yaml --source medin --limit 5 --dry-run -v
 ```
 
 | Flag | Meaning |
@@ -213,8 +211,8 @@ python -m indexer --config mvp_config.yaml --source medin --limit 5 --dry-run -v
 ### Search examples
 
 ```bash
-curl -s 'http://localhost:9400/gleaner-medin/_count'
-curl -s 'http://localhost:9400/gleaner-medin/_search' \
+curl -s 'http://localhost:9400/odis-medin/_count'
+curl -s 'http://localhost:9400/odis-medin/_search' \
   -H 'Content-Type: application/json' \
   -d '{"query":{"multi_match":{"query":"coastal","fields":["name","description","keywords"]}},"_source":["name","url","source_url"]}'
 ```

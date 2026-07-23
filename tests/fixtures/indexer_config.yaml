@@ -1,0 +1,13 @@
+---
+objectstore:
+    address: localhost
+    port: 4566
+    accessKey: test
+    secretKey: test
+    ssl: false
+    bucket: iode
+    region: us-east-1
+search:
+    type: elasticsearch
+    endpoint: http://localhost:9400
+    index_prefix: odis
