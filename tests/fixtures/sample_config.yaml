@@ -24,6 +24,17 @@ summoner:
     headless_wait_for_ldjson: true    # waitForSelector script[type=application/ld+json]
     headless_block_assets: true       # skip images/fonts/media/css in headless
     headless_hybrid: true             # static first, Browserless if no JSON-LD (when source.headless)
-    threads: 5
-    delay: 250
-    user_agent: "odis-summoner/0.1"
+    threads: 2
+    delay: 100
+    user_agent: "test-summoner/0.1"
+sources:
+  - name: active_src
+    url: http://example.com/sitemap.xml
+    active: true
+  - name: headless_src
+    url: http://example.com/headless
+    active: true
+    headless: true
+  - name: inactive_src
+    url: http://example.com/inactive
+    active: false

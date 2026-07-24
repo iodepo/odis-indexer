@@ -91,6 +91,25 @@ make the sources file using info from https://catalogue.odis.org/
 ```bash
 python make_sources.py
 ```
+## Harvest and Load (The easy way)
+
+You can run the entire pipeline for one or all sources using the `gateway.py` script.
+
+```bash
+# Process all active sources in one command
+python gateway.py --source all --limit 5
+```
+
+Or for a single source:
+
+```bash
+python gateway.py --source [SOURCE] --limit 5
+```
+
+This executes **summoner**, **scribe**, and **indexer** in sequence for each source.
+
+---
+
 ## Harvest JSON-LD (summoner)
 
 look in sources.yaml for a source name and replace [SOURCE] by this name

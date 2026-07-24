@@ -18,7 +18,7 @@ def test_load_config(fixtures_dir: Path) -> None:
     assert cfg.summoner.delay == 100
     assert cfg.summoner.user_agent == "test-summoner/0.1"
     assert cfg.summoner.headless == "http://localhost:3000"
-    assert cfg.summoner.headless_token == "test-token"
+    assert cfg.summoner.headless_token == "odis-local-token"
     assert cfg.summoner.headless_configured is True
     assert cfg.summoner.headless_hybrid is True
     assert len(cfg.sources) == 3
@@ -53,6 +53,13 @@ objectstore:
   secretKey: b
   ssl: true
   bucket: bucket1
+summoner:
+  threads: 1
+  delay: 1
+  user_agent: test
+  headless_timeout_ms: 100
+  headless_concurrent: 1
+  headless_wait_ms: 1
 sources: []
 """,
         encoding="utf-8",

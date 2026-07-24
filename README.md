@@ -79,6 +79,32 @@ UI links prefer Schema.org **`url`**, then harvest **`source_url`**, then `@id` 
 
 ---
 
+## One-shot (Gateway)
+
+Execute summoner, scribe, and indexer in sequence for one or all sources.
+
+```bash
+# Process a single source
+python gateway.py --source medin
+
+# Process ALL active sources
+python gateway.py --source all
+
+# Smoke test all sources (limit to 1 page each, dry run)
+python gateway.py --source all --limit 1 --dry-run
+```
+
+| Flag | Meaning |
+|------|---------|
+| `--config` / `-c` | Path to YAML |
+| `--source` / `-s` | Source name OR `all` |
+| `--limit N` | Cap processing per source |
+| `--dry-run` | No writes to S3, Oxigraph, or ES |
+| `--rude` | Skip robots.txt (summoner) |
+| `-v` | Debug logging |
+
+---
+
 ## Summoner
 
 Sitemap walk + JSON-LD extraction → S3.
@@ -115,7 +141,7 @@ python -m summoner --config config.yaml --source medin --limit 5 --dry-run -v
 | Flag | Meaning |
 |------|---------|
 | `--config` / `-c` | Path to YAML |
-| `--source` / `-s` | Single source `name` |
+| `--source` / `-s` | Single source `name` or `all` |
 | `--limit N` | Cap page URLs per source |
 | `--dry-run` | Extract only; do not write S3 |
 | `--rude` | Skip robots.txt |
