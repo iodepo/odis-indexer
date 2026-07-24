@@ -42,13 +42,18 @@ class AppConfig:
 
 
 def index_name(source: str, prefix: str = "odis") -> str:
+    # #3 enter everything in one index
+    return "odis"
+
     """Elasticsearch index name for a source, e.g. odis-medin."""
+    """
     name = source.strip().lower()
     if not name:
         raise ValueError("source name must be non-empty")
     # ES index names: lowercase, no spaces
     safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in name)
     return f"{prefix.strip() or 'odis'}-{safe}"
+    """
 
 
 def graph_iri(source: str) -> str:

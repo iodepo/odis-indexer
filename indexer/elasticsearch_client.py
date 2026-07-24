@@ -43,17 +43,27 @@ def build_client(endpoint: str) -> Elasticsearch:
     return Elasticsearch(endpoint.rstrip("/"))
 
 
-def replace_index(client: Elasticsearch, index: str) -> None:
-    """Delete index if present, then create with standard mapping."""
-    if client.indices.exists(index=index):
-        logger.info("Deleting existing index %s", index)
-        client.indices.delete(index=index)
-    logger.info("Creating index %s", index)
-    client.indices.create(
+def replace_index(client: Elasticsearch, index: str, source: str) -> None:
+    """Ensure index exists, and remove existing documents for this source."""
+    if not client.indices.exists(index=index):
+        logger.info("Creating index %s", index)
+        client.indices.create(
+            index=index,
+            settings=INDEX_BODY["settings"],
+            mappings=INDEX_BODY["mappings"],
+        )
+        return
+
+    # If index exists, delete documents for this source
+    # s3_key typically looks like 'summoned/{source}/...'
+    query = {"prefix": {"s3_key": f"summoned/{source}/"}}
+    logger.info("Removing existing documents for source '%s' in %s", source, index)
+    res = client.delete_by_query(
         index=index,
-        settings=INDEX_BODY["settings"],
-        mappings=INDEX_BODY["mappings"],
+        query=query,
+        refresh=True,
     )
+    logger.info("Removed %s documents", res.get("deleted", 0))
 
 
 def bulk_index(

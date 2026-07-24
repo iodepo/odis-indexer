@@ -5,17 +5,27 @@ from unittest.mock import MagicMock, patch
 from indexer.elasticsearch_client import bulk_index, replace_index
 
 
-def test_replace_index_deletes_then_creates() -> None:
+def test_replace_index_uses_delete_by_query_if_exists() -> None:
     client = MagicMock()
     client.indices.exists.return_value = True
-    replace_index(client, "odis-medin")
-    client.indices.delete.assert_called_once_with(index="odis-medin")
+    replace_index(client, "odis", "oceanexpert")
+    client.delete_by_query.assert_called_once()
+    kwargs = client.delete_by_query.call_args.kwargs
+    assert kwargs["index"] == "odis"
+    assert kwargs["query"]["prefix"]["s3_key"] == "summoned/oceanexpert/"
+    # Should NOT delete index if it exists
+    client.indices.delete.assert_not_called()
+
+
+def test_replace_index_creates_if_missing() -> None:
+    client = MagicMock()
+    client.indices.exists.return_value = False
+    replace_index(client, "odis", "oceanexpert")
     client.indices.create.assert_called_once()
     kwargs = client.indices.create.call_args.kwargs
-    assert kwargs["index"] == "odis-medin"
-    assert "mappings" in kwargs
-    assert kwargs["mappings"]["properties"]["name"]["type"] == "text"
-    assert kwargs["mappings"]["properties"]["jsonld"]["enabled"] is False
+    assert kwargs["index"] == "odis"
+    # Should NOT call delete_by_query if index was just created
+    client.delete_by_query.assert_not_called()
 
 
 def test_bulk_index_pops_id() -> None:

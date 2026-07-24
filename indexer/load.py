@@ -102,7 +102,7 @@ def run_load(
     es = build_client(cfg.search.base_endpoint)
     # shallow copy docs so bulk can pop _id without mutating if re-run in process
     payload = [dict(d) for d in docs]
-    replace_index(es, idx)
+    replace_index(es, idx, source)
     success, err_count = bulk_index(es, idx, payload)
     stats.indexed = success
     stats.bulk_errors = err_count
