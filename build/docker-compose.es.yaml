@@ -14,7 +14,7 @@ services:
       - xpack.security.http.ssl.enabled=false
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
       - cluster.name=odis-cluster
-      # Browser UI (mvp/ui) needs CORS. Use regex form — bare * breaks ES settings YAML.
+      # Browser UI (/ui) needs CORS. Use regex form — bare * breaks ES settings YAML.
       - http.cors.enabled=true
       - http.cors.allow-origin=/.*/
       - http.cors.allow-headers=X-Requested-With,Content-Type,Content-Length,Authorization

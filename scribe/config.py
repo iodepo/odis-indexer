@@ -84,7 +84,7 @@ def activity_iri(source: str, sha: str) -> str:
 
 
 def agent_iri() -> str:
-    """Software agent IRI for the MVP scribe loader."""
+    """Software agent IRI for the scribe loader."""
     return "urn:odis:agent:scribe"
 
 

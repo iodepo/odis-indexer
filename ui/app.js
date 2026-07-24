@@ -217,7 +217,7 @@
   });
 
   // --- Theme (light / dark) ---
-  const THEME_KEY = "mvp-ui-theme";
+  const THEME_KEY = "ui-theme";
   const themeToggle = document.getElementById("theme-toggle");
 
   function currentTheme() {

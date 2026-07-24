@@ -13,9 +13,9 @@ from .crawl import run_crawl
 
 
 def _default_config_path() -> Path:
-    # Prefer config.yaml next to the package's parent (mvp/)
-    mvp_dir = Path(__file__).resolve().parent.parent
-    candidate = mvp_dir / "config.yaml"
+    # Prefer config.yaml next to the package's parent
+    root_dir = Path(__file__).resolve().parent.parent
+    candidate = root_dir / "config.yaml"
     if candidate.is_file():
         return candidate
     return Path("config.yaml")
@@ -25,7 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="summoner",
         description=(
-            "MVP sitemap → JSON-LD → S3 summoner. "
+            "sitemap → JSON-LD → S3 summoner. "
             "Static by default; sources with headless:true use Browserless when configured."
         ),
     )
@@ -34,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-c",
         type=Path,
         default=None,
-        help="Path to config.yaml (default: mvp/config.yaml or ./config.yaml)",
+        help="Path to config.yaml (default: /config.yaml or ./config.yaml)",
     )
     parser.add_argument(
         "--source",

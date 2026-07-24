@@ -13,8 +13,8 @@ from .load import run_load
 
 
 def _default_config_path() -> Path:
-    mvp_dir = Path(__file__).resolve().parent.parent
-    candidate = mvp_dir / "config.yaml"
+    root_dir = Path(__file__).resolve().parent.parent
+    candidate = root_dir / "config.yaml"
     if candidate.is_file():
         return candidate
     return Path("config.yaml")
@@ -23,7 +23,7 @@ def _default_config_path() -> Path:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="scribe",
-        description="MVP load summoned JSON-LD from S3 into Oxigraph as named-graph quads.",
+        description="load summoned JSON-LD from S3 into Oxigraph as named-graph quads.",
     )
     parser.add_argument(
         "--config",

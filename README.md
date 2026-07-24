@@ -40,7 +40,6 @@ Sitemap / pages
 ## Install
 
 ```bash
-cd mvp
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -237,7 +236,6 @@ See [ui/README.md](./ui/README.md) for UI-specific notes and provenance detail.
 ## Tests
 
 ```bash
-cd mvp
 pytest -q
 ```
 

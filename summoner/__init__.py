@@ -1,4 +1,4 @@
-"""MVP JSON-LD sitemap summoner.
+"""JSON-LD sitemap summoner.
 
 Reads config.yaml, walks sitemaps, extracts JSON-LD, stores in S3.
 Optional Browserless headless fetch when a source has headless: true.
