@@ -1,34 +1,29 @@
 ---
 objectstore:
     address: localhost
-    port: 4566
+    port: 4566 
     accessKey: test
     secretKey: test
     ssl: false
-    bucket: iode
-    region: us-east-1
+    bucket: odis  # set to a bucket you own in your object store of choice
+    region: us-east-1 # set to the region of your object store if applicable
+triplestore:
+    type: oxigraph
+    endpoint: http://localhost:7878
+search:
+    type: elasticsearch
+    endpoint: http://localhost:9400
+    index_prefix: odis
 summoner:
+    # Browserless base URL (docker compose -f build/docker-compose.browserless.yaml up -d)
     headless: http://localhost:3000
-    headless_token: test-token
-    headless_timeout_ms: 30000
-    headless_concurrent: 1
-    headless_hybrid: true
-    threads: 2
-    delay: 100
-    user_agent: "test-summoner/0.1"
-sources:
-    - name: active_src
-      url: https://example.org/sitemap.xml
-      sourcetype: sitemap
-      active: true
-      headless: false
-    - name: inactive_src
-      url: https://example.org/other.xml
-      sourcetype: sitemap
-      active: false
-      headless: false
-    - name: headless_src
-      url: https://example.org/js-sitemap.xml
-      sourcetype: sitemap
-      active: true
-      headless: true
+    headless_token: odis-local-token   # or env BROWSERLESS_TOKEN; must match compose TOKEN
+    headless_timeout_ms: 60000
+    headless_concurrent: 2            # client-side browser session cap
+    headless_wait_ms: 5000            # extra wait after navigation
+    headless_wait_for_ldjson: true    # waitForSelector script[type=application/ld+json]
+    headless_block_assets: true       # skip images/fonts/media/css in headless
+    headless_hybrid: true             # static first, Browserless if no JSON-LD (when source.headless)
+    threads: 5
+    delay: 250
+    user_agent: "odis-summoner/0.1"
