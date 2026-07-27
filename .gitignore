@@ -34,3 +34,8 @@ target/
 env/
 venv/
 .idea/
+
+#test files/output
+gateway_*.txt
+gateway_*.log
+logs/*
