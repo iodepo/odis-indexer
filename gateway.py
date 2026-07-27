@@ -6,6 +6,7 @@ import argparse
 import sys
 import logging
 from pathlib import Path
+from datetime import datetime
 
 # Import main functions from the modules
 # We use absolute imports assuming the script is run with PYTHONPATH=.
@@ -76,6 +77,11 @@ def main() -> int:
     if unknown:
         print(f"Warning: Unknown arguments ignored: {unknown}")
 
+    # Setup logs directory
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True)
+    today = datetime.now().strftime("%Y%m%d")
+
     # Determine sources to process
     sources = []
     if args.source == "all":
@@ -103,9 +109,31 @@ def main() -> int:
 
     overall_rc = 0
     for source_name in sources:
+        log_file = log_dir / f"gateway_{source_name}_{today}.log"
         print(f"\n{'='*60}")
         print(f"Processing source: {source_name}")
+        print(f"Logging to: {log_file}")
         print(f"{'='*60}")
+
+        # Configure logging to file for this source
+        file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(logging.Formatter('%(levelname)s %(name)s: %(message)s'))
+
+        root_logger = logging.getLogger()
+        # Remove existing handlers if any (from previous iterations)
+        for h in root_logger.handlers[:]:
+            root_logger.removeHandler(h)
+        
+        root_logger.addHandler(file_handler)
+        root_logger.addHandler(console_handler)
+        
+        if args.verbose:
+            root_logger.setLevel(logging.DEBUG)
+        else:
+            root_logger.setLevel(logging.INFO)
 
         # Prepare argv for sub-scripts
         # We reconstruct argv to pass to the main functions of each module
