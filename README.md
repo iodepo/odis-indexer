@@ -27,15 +27,16 @@ Sitemap / pages
 | `summoner` | Sitemap → extract JSON-LD → S3 |
 | `scribe` | S3 JSON-LD → N-Quads in named graph → Oxigraph |
 | `indexer` | S3 JSON-LD → Elasticsearch (search facade + full JSON-LD) |
-| `ui/` | Static HTML/JS search UI over Elasticsearch |
+| `visualizer/` | Visualizes the Oxigraph graph |
+| `visualizer/ui/` | Static HTML/JS search UI over Elasticsearch |
 
 ## Requirements
 
 - Python ≥ 3.11
 - Docker (compose files under `build/` for ES, Oxigraph, Browserless; S3 usually LocalStack/MinIO)
 - S3-compatible store (LocalStack, MinIO, AWS, …) — default config: `localhost:4566`, bucket `iode`
-- Oxigraph for `scribe` — default `http://localhost:7878` (`build/docker-compose.oxigraph.yaml`)
-- Elasticsearch 8 for `indexer` / UI — default `http://localhost:9400` (`build/docker-compose.es.yaml`)
+- Oxigraph for `scribe` / `visualizer` — default `http://localhost:7878` (`build/docker-compose.oxigraph.yaml`)
+- Elasticsearch 8 for `indexer` / Search UI — default `http://localhost:9400` (`build/docker-compose.es.yaml`)
 
 ## Install
 
@@ -76,6 +77,24 @@ pip install -r requirements.txt
 | Harvest URL in Oxigraph | **Yes** — PROV-O in `urn:odis:prov:<source>` (`prov:hadPrimarySource`, `prov:value` = s3 key) |
 
 UI links prefer Schema.org **`url`**, then harvest **`source_url`**, then `@id` if it is `http(s)`.
+
+---
+
+## Visualizer
+
+Generates an interactive HTML graph visualization from Oxigraph data.
+
+```bash
+python visualizer/visualize.py --source medin
+# Generates visualizer/oxigraph_graph.html
+```
+
+| Flag | Meaning |
+|------|---------|
+| `--source` / `-s` | **Required.** Source name (graph `urn:odis:<source>`) |
+| `--config` / `-c` | Path to YAML |
+
+The output file can be opened directly in a browser. It uses local dependencies in `visualizer/lib/`.
 
 ---
 
@@ -246,16 +265,22 @@ curl -s 'http://localhost:9400/odis-medin/_search' \
 
 ## Search UI
 
-Static page under `ui/` (no build step). Requires Elasticsearch with CORS (enabled in `build/docker-compose.es.yaml`).
+Static page under `visualizer/ui/` (no build step). Requires Elasticsearch with CORS (enabled in `build/docker-compose.es.yaml`).
+
+The UI has been updated with:
+- **Dark Mode Support:** Toggle between light and dark themes.
+- **Improved Result Cards:** Better display of metadata and provenance.
+- **JSON-LD Inspection:** Expandable sections to view the raw harvested JSON-LD.
+- **Direct Deep-linking:** Support for `?q=searchterm` in the URL.
 
 ```bash
 # after indexer has loaded a source
-cd ui
+cd visualizer/ui
 python -m http.server 8080
 # open http://localhost:8080
 ```
 
-See [ui/README.md](./ui/README.md) for UI-specific notes and provenance detail.
+See [visualizer/ui/README.md](./visualizer/ui/README.md) for UI-specific notes and provenance detail.
 
 ---
 
