@@ -47,7 +47,7 @@ def _parse_json_text(text: str) -> Any | None:
     if text.startswith("<![CDATA[") and text.endswith("]]>"):
         text = text[9:-3].strip()
     try:
-        return json.loads(text)
+        return json.loads(text, strict=False)
     except json.JSONDecodeError:
         return None
 

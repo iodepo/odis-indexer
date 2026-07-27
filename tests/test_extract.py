@@ -66,6 +66,24 @@ def test_no_jsonld_in_html() -> None:
     assert "no application/ld+json" in (result.error or "")
 
 
+def test_jsonld_with_control_characters() -> None:
+    html = """
+    <html>
+      <script type="application/ld+json">
+      {
+        "@context": "http://schema.org/",
+        "@type": "Dataset",
+        "description": "This has a tab\t and a newline
+in the string"
+      }
+      </script>
+    </html>
+    """
+    result = extract_from_html("https://example.org/", html)
+    assert result.ok
+    assert result.data["description"] == "This has a tab\t and a newline\nin the string"
+
+
 def test_dumps_roundtrip(read_fixture) -> None:
     data = json.loads(read_fixture("direct.jsonld"))
     raw = dumps_jsonld(data)
