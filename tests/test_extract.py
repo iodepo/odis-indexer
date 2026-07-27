@@ -84,6 +84,23 @@ in the string"
     assert result.data["description"] == "This has a tab\t and a newline\nin the string"
 
 
+def test_jsonld_with_malformed_empty_value() -> None:
+    html = """
+    <html>
+      <script type="application/ld+json">
+      {
+        "@context": "http://schema.org/",
+        "@type": "Dataset",
+        "description": 
+      }
+      </script>
+    </html>
+    """
+    result = extract_from_html("https://example.org/", html)
+    assert result.ok
+    assert result.data["description"] == ""
+
+
 def test_dumps_roundtrip(read_fixture) -> None:
     data = json.loads(read_fixture("direct.jsonld"))
     raw = dumps_jsonld(data)

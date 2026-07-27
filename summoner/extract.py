@@ -49,7 +49,16 @@ def _parse_json_text(text: str) -> Any | None:
     try:
         return json.loads(text, strict=False)
     except json.JSONDecodeError:
-        return None
+        # Try to recover from common malformations like missing values
+        # e.g., "description": }  -> "description": "" }
+        # Note: We use a simple regex approach for common cases
+        # This replaces any colon followed by whitespace and a closing brace/bracket or comma
+        # with a colon and empty string.
+        fixed_text = re.sub(r'(:\s*)(\s*[}\],])', r'\1""\2', text)
+        try:
+            return json.loads(fixed_text, strict=False)
+        except json.JSONDecodeError:
+            return None
 
 
 def extract_from_json_body(url: str, body: str, content_type: str = "") -> ExtractResult:
