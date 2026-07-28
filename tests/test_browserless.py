@@ -98,9 +98,26 @@ def test_browserless_from_config() -> None:
     from summoner.browserless import browserless_from_config
     from summoner.config import SummonerConfig
 
-    assert browserless_from_config(SummonerConfig(headless="")) is None
+    assert browserless_from_config(SummonerConfig(
+        headless="",
+        headless_timeout_ms=1000,
+        headless_concurrent=1,
+        headless_wait_ms=1000,
+        threads=1,
+        delay=1,
+        user_agent="test"
+    )) is None
     client = browserless_from_config(
-        SummonerConfig(headless="http://localhost:3000", headless_token="x", headless_concurrent=2)
+        SummonerConfig(
+            headless="http://localhost:3000",
+            headless_token="x",
+            headless_concurrent=2,
+            headless_timeout_ms=1000,
+            headless_wait_ms=1000,
+            threads=1,
+            delay=1,
+            user_agent="test"
+        )
     )
     assert client is not None
     try:
