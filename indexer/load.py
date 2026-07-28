@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
+from datetime import datetime
 from .config import AppConfig, graph_iri, index_name
 from .elasticsearch_client import build_client, bulk_index, replace_index
 from .extract import documents_from_jsonld_bytes
@@ -103,10 +104,37 @@ def run_load(
     # shallow copy docs so bulk can pop _id without mutating if re-run in process
     payload = [dict(d) for d in docs]
     replace_index(es, idx, source)
-    success, err_count = bulk_index(es, idx, payload)
+    success, bulk_errors = bulk_index(es, idx, payload)
     stats.indexed = success
-    stats.bulk_errors = err_count
+    if bulk_errors:
+        stats.messages.extend(bulk_errors)
     # refresh for immediate searchability in demos
     es.indices.refresh(index=idx)
     logger.info("Indexed %s documents into %s", success, idx)
+
+    update_odiscat_stats(es, stats)
+
     return stats
+
+
+def update_odiscat_stats(client: Elasticsearch, stats: LoadStats) -> None:
+    """Update the odiscat index with stats from the latest indexer run."""
+    index_name = "odiscat"
+    if not client.indices.exists(index=index_name):
+        logger.warning("Index %s does not exist, skipping stats update", index_name)
+        return
+
+    doc = {
+        "doc": {
+            "last_indexed": datetime.utcnow().isoformat(),
+            "indexed_objects_seen": stats.objects_seen,
+            "indexed_count": stats.indexed,
+            "indexed_errors": stats.errors + len([m for m in stats.messages if "ID " in m]),
+            "indexed_error_messages": stats.messages,
+        }
+    }
+    try:
+        client.update(index=index_name, id=stats.source, body=doc, retry_on_conflict=3)
+        logger.info("Updated %s stats for source %s", index_name, stats.source)
+    except Exception as exc:
+        logger.error("Failed to update %s for %s: %s", index_name, stats.source, exc)

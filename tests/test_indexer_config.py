@@ -16,8 +16,8 @@ def test_load_config(fixtures_dir: Path) -> None:
 
 
 def test_index_name() -> None:
-    assert index_name("medin") == "odis-medin"
-    assert index_name("BODC", "odis") == "odis-bodc"
+    assert index_name("medin") == "odis"
+    assert index_name("BODC", "odis") == "odis"
 
 
 def test_graph_iri() -> None:

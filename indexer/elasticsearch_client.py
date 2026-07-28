@@ -91,8 +91,16 @@ def bulk_index(
         raise_on_exception=False,
     )
     err_count = len(errors) if isinstance(errors, list) else int(errors or 0)
-    logger.info("Bulk index %s: success=%s errors=%s", index, success, err_count)
+    error_details = []
     if err_count and isinstance(errors, list):
-        for err in errors[:5]:
-            logger.warning("Bulk error sample: %s", err)
-    return int(success), err_count
+        for err in errors:
+            # err is a dict like {'index': {'_index': '...', '_id': '...', 'status': 400, 'error': {...}}}
+            op = next(iter(err.keys()))
+            info = err[op]
+            msg = f"ID {info.get('_id')}: {info.get('error', {}).get('reason', 'unknown error')}"
+            error_details.append(msg)
+            if len(error_details) <= 5:
+                logger.warning("Bulk error sample: %s", msg)
+
+    logger.info("Bulk index %s: success=%s errors=%s", index, success, err_count)
+    return int(success), error_details

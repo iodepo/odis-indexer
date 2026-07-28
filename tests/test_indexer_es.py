@@ -41,7 +41,7 @@ def test_bulk_index_pops_id() -> None:
         bulk.return_value = (1, [])
         success, errors = bulk_index(client, "odis-medin", docs)
     assert success == 1
-    assert errors == 0
+    assert errors == []
     actions = list(bulk.call_args[0][1])
     assert actions[0]["_id"] == "https://example.org/1"
     assert actions[0]["_source"]["name"] == "A"

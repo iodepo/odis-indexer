@@ -30,8 +30,8 @@ def index_to_es(sources, config_path):
             doc["_id"] = s["sourceid"]
             documents.append(doc)
         
-        success, errors = bulk_index(client, index_name, documents)
-        print(f"ES Indexing complete: {success} successes, {errors} errors")
+        success, bulk_errors = bulk_index(client, index_name, documents)
+        print(f"ES Indexing complete: {success} successes, {len(bulk_errors)} errors")
     except Exception as e:
         print(f"Error indexing to ES: {e}")
 
