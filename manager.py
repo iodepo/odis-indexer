@@ -24,7 +24,8 @@ def run_task(item_name, script_path, extra_args):
     try:
         # Construct the command: python3 script_to_run.py --source item_name [extra_args]
         # gateway.py expects --source (or -s)
-        cmd = ['python3', script_path, '--source', item_name]
+        # Ensure we are using the absolute path of the script
+        cmd = [sys.executable, script_path, '--source', item_name]
         cmd.extend(extra_args)
         
         result = subprocess.run(
@@ -41,9 +42,13 @@ def run_task(item_name, script_path, extra_args):
 
 def main():
     # Singleton check using file lock
+    # Get the directory of the current script (manager.py)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    lock_file_path = os.path.join(base_dir, LOCK_FILE)
+
     # We open in 'a' mode and keep the handle open to ensure the lock is held
     try:
-        lock_file_handle = open(LOCK_FILE, 'a')
+        lock_file_handle = open(lock_file_path, 'a')
         fcntl.flock(lock_file_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except (IOError, OSError):
         print("Error: Another instance of manager.py is already running.")
@@ -96,7 +101,7 @@ def main():
         extra_args.append('--verbose')
 
     # 1. Load configuration
-    config_file = args.config if args.config else 'config.yaml'
+    config_file = args.config if args.config else os.path.join(base_dir, 'config.yaml')
     try:
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
@@ -106,15 +111,21 @@ def main():
 
     manager_config = config.get('manager', {})
     max_workers = manager_config.get('max_parallel_processes', 1)
+    
     script_to_run = manager_config.get('script_to_run', 'gateway.py')
+    
+    # If the script_to_run is not an absolute path, make it relative to base_dir
+    if not os.path.isabs(script_to_run):
+        script_to_run = os.path.join(base_dir, script_to_run)
 
     # 2. Load sources
     # We might want to use sources.yaml path from config, but for now it's hardcoded as per previous state
+    sources_file = os.path.join(base_dir, 'sources.yaml')
     try:
-        with open('sources.yaml', 'r') as f:
+        with open(sources_file, 'r') as f:
             sources_data = yaml.safe_load(f)
     except FileNotFoundError:
-        print("Error: sources.yaml not found.")
+        print(f"Error: {sources_file} not found.")
         return
 
     sources = sources_data.get('sources', [])
