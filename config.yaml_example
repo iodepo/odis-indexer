@@ -28,5 +28,5 @@ summoner:
     delay: 250
     user_agent: "odis-summoner/0.1"
 manager:
-    max_parallel_processes: 5
+    max_parallel_processes: 5           #do not exaggerate, you will run out of memory soon...
     #script_to_run: gateway.py
