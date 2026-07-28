@@ -162,12 +162,13 @@ def main() -> int:
         except Exception as e:
             print(f"Error executing Summoner for {sourceid}: {e}")
             overall_rc = 1
-            continue
+            # We continue to Indexer even if Summoner fails to ensure stats are updated
+            rc = 1 
 
         if rc != 0:
             print(f"Summoner failed for {sourceid} with exit code {rc}")
             overall_rc = rc
-            continue
+            # Continue to Indexer anyway
 
         # 2. Scribe
         print("\n>>> Running Scribe...")
@@ -175,16 +176,16 @@ def main() -> int:
         # Scribe doesn't support --rude, common_args doesn't have it.
         try:
             scribe_main = get_scribe_main()
-            rc = scribe_main(scribe_args)
+            rc_scribe = scribe_main(scribe_args)
         except Exception as e:
             print(f"Error executing Scribe for {sourceid}: {e}")
             overall_rc = 1
-            continue
+            rc_scribe = 1
 
-        if rc != 0:
-            print(f"Scribe failed for {sourceid} with exit code {rc}")
-            overall_rc = rc
-            continue
+        if rc_scribe != 0:
+            print(f"Scribe failed for {sourceid} with exit code {rc_scribe}")
+            overall_rc = rc_scribe
+            # Continue to Indexer anyway
 
         # 3. Indexer
         print("\n>>> Running Indexer...")

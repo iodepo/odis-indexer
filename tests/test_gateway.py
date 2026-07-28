@@ -159,6 +159,7 @@ def test_main_failure_continues(
     assert rc != 0
     # But should have attempted both
     assert mock_summoner.call_count == 2
-    # Scribe and Indexer should only be called for the second source
-    assert mock_scribe.call_count == 1
-    assert mock_indexer.call_count == 1
+    # Scribe and Indexer should now be called for both sources, even the failing one
+    # to ensure stats are updated.
+    assert mock_scribe.call_count == 2
+    assert mock_indexer.call_count == 2

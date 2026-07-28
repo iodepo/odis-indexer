@@ -106,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if stats.objects_seen == 0:
         return 2
-    if not stats.dry_run and not stats.loaded:
+    if not stats.dry_run and not stats.loaded and stats.objects_seen > 0:
         return 1
     return 0
 
