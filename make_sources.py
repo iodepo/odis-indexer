@@ -33,7 +33,7 @@ def main():
     used_sourceids = set()
     for rec in records:
         # Mapping fields
-        # ds_name_english -> propername
+        # ds_name_english -> name
         # ds_url -> domain
         # odis_arch_url -> url
         # odis_arch_type -> sourcetype
@@ -52,7 +52,7 @@ def main():
         
         source_entry = {
             "sourceid": sourceid,
-            "propername": proper_name,
+            "name": proper_name,
             "domain": rec.get("ds_url", ""),
             "pid": f"https://catalogue.odis.org/view/{rec.get('id')}",
             "sourcetype": rec.get("odis_arch_type", "").lower(),

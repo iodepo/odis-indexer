@@ -59,7 +59,7 @@ class SourceConfig:
     sourcetype: str = "sitemap"
     active: bool = True
     headless: bool = False
-    propername: str = ""
+    name: str = ""
     # Extra fields from YAML are ignored at construction time.
 
 
@@ -140,7 +140,7 @@ def _parse_source(raw: dict[str, Any]) -> SourceConfig:
         sourcetype=str(raw.get("sourcetype", "sitemap") or "sitemap"),
         active=bool(raw.get("active", True)),
         headless=bool(raw.get("headless", False)),
-        propername=str(raw.get("propername", "") or ""),
+        name=str(raw.get("name", "") or ""),
     )
 
 
