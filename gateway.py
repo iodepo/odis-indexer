@@ -42,7 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--source",
         "-s",
         required=True,
-        help="Source name to process, or 'all' to process all active sources",
+        help="Source ID to process, or 'all' to process all active sources",
     )
     parser.add_argument(
         "--limit",
@@ -95,7 +95,7 @@ def main() -> int:
         
         try:
             cfg = load_config(config_path)
-            sources = [s.name for s in cfg.sources if s.active]
+            sources = [s.sourceid for s in cfg.sources if s.active]
         except Exception as e:
             print(f"Error loading config to find all sources: {e}")
             return 1
@@ -108,13 +108,13 @@ def main() -> int:
         sources = [args.source]
 
     overall_rc = 0
-    for source_name in sources:
-        log_file = log_dir / f"gateway_{source_name}_{today}.log"
+    for sourceid in sources:
+        log_file = log_dir / f"gateway_{sourceid}_{today}.log"
         print(f"\n{'='*60}")
-        print(f"Processing source: {source_name}")
+        print(f"Processing source: {sourceid}")
         print(f"Logging to: {log_file}")
         print(f"{'='*60}")
-
+        
         # Configure logging to file for this source
         file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
         file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
@@ -141,7 +141,7 @@ def main() -> int:
         if args.config:
             common_args.extend(["--config", str(args.config)])
         
-        common_args.extend(["--source", source_name])
+        common_args.extend(["--source", sourceid])
         
         if args.limit:
             common_args.extend(["--limit", str(args.limit)])
@@ -160,12 +160,12 @@ def main() -> int:
             summoner_main = get_summoner_main()
             rc = summoner_main(summoner_args)
         except Exception as e:
-            print(f"Error executing Summoner for {source_name}: {e}")
+            print(f"Error executing Summoner for {sourceid}: {e}")
             overall_rc = 1
             continue
 
         if rc != 0:
-            print(f"Summoner failed for {source_name} with exit code {rc}")
+            print(f"Summoner failed for {sourceid} with exit code {rc}")
             overall_rc = rc
             continue
 
@@ -177,12 +177,12 @@ def main() -> int:
             scribe_main = get_scribe_main()
             rc = scribe_main(scribe_args)
         except Exception as e:
-            print(f"Error executing Scribe for {source_name}: {e}")
+            print(f"Error executing Scribe for {sourceid}: {e}")
             overall_rc = 1
             continue
 
         if rc != 0:
-            print(f"Scribe failed for {source_name} with exit code {rc}")
+            print(f"Scribe failed for {sourceid} with exit code {rc}")
             overall_rc = rc
             continue
 
@@ -194,12 +194,12 @@ def main() -> int:
             indexer_main = get_indexer_main()
             rc = indexer_main(indexer_args)
         except Exception as e:
-            print(f"Error executing Indexer for {source_name}: {e}")
+            print(f"Error executing Indexer for {sourceid}: {e}")
             overall_rc = 1
             continue
 
         if rc != 0:
-            print(f"Indexer failed for {source_name} with exit code {rc}")
+            print(f"Indexer failed for {sourceid} with exit code {rc}")
             overall_rc = rc
             continue
 

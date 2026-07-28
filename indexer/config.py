@@ -56,8 +56,8 @@ def index_name(source: str, prefix: str = "odis") -> str:
     """
 
 
-def graph_iri(source: str) -> str:
-    return f"urn:odis:{source.strip()}"
+def graph_iri(sourceid: str) -> str:
+    return f"urn:odis:{sourceid.strip()}"
 
 
 def _require(data: dict[str, Any], key: str, ctx: str) -> Any:

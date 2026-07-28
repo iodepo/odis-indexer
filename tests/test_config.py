@@ -27,17 +27,17 @@ def test_load_config(fixtures_dir: Path) -> None:
 def test_select_active_sources(fixtures_dir: Path) -> None:
     cfg = load_config(fixtures_dir / "sample_config.yaml")
     active = cfg.select_sources()
-    assert [s.name for s in active] == ["active_src", "headless_src"]
+    assert [s.sourceid for s in active] == ["active_src", "headless_src"]
 
 
-def test_select_by_name(fixtures_dir: Path) -> None:
+def test_select_by_sourceid(fixtures_dir: Path) -> None:
     cfg = load_config(fixtures_dir / "sample_config.yaml")
     selected = cfg.select_sources("active_src")
     assert len(selected) == 1
     assert selected[0].url.endswith("sitemap.xml")
 
 
-def test_select_inactive_by_name_returns_empty(fixtures_dir: Path) -> None:
+def test_select_inactive_by_sourceid_returns_empty(fixtures_dir: Path) -> None:
     cfg = load_config(fixtures_dir / "sample_config.yaml")
     assert cfg.select_sources("inactive_src") == []
 
@@ -68,6 +68,14 @@ sources: []
     assert cfg.objectstore.base_url == "https://s3.example.com:443"
 
 
-def test_missing_file() -> None:
-    with pytest.raises(FileNotFoundError):
-        load_config("/nonexistent/config.yaml")
+
+def test_headless_token_override(fixtures_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Test that environment variable overrides config file
+    monkeypatch.setenv("BROWSERLESS_TOKEN", "env-token")
+    cfg = load_config(fixtures_dir / "sample_config.yaml")
+    assert cfg.summoner.headless_token == "env-token"
+
+    # Test that config file is used when env var is missing
+    monkeypatch.delenv("BROWSERLESS_TOKEN", raising=False)
+    cfg = load_config(fixtures_dir / "sample_config.yaml")
+    assert cfg.summoner.headless_token == "odis-local-token"

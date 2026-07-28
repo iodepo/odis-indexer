@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--source",
         "-s",
         default=None,
-        help="Only process this source name (must be active)",
+        help="Only process this source ID (must be active)",
     )
     parser.add_argument(
         "--limit",
@@ -101,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         result = run_crawl(
             cfg,
-            source_name=args.source,
+            sourceid=args.source,
             limit=args.limit,
             dry_run=args.dry_run,
             rude=args.rude,

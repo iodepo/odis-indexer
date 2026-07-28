@@ -30,7 +30,7 @@ def main():
         return
 
     new_sources = []
-    used_names = set()
+    used_sourceids = set()
     for rec in records:
         # Mapping fields
         # ds_name_english -> propername
@@ -40,18 +40,18 @@ def main():
         # id -> pid
         
         proper_name = rec.get("ds_name_english", "")
-        base_name = slugify(proper_name)
+        base_id = slugify(proper_name)
         
-        name = base_name
+        sourceid = base_id
         counter = 1
-        while name in used_names:
-            name = f"{base_name}-{counter}"
+        while sourceid in used_sourceids:
+            sourceid = f"{base_id}-{counter}"
             counter += 1
         
-        used_names.add(name)
+        used_sourceids.add(sourceid)
         
         source_entry = {
-            "name": name,
+            "sourceid": sourceid,
             "propername": proper_name,
             "domain": rec.get("ds_url", ""),
             "pid": f"https://catalogue.odis.org/view/{rec.get('id')}",

@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SourceStats:
-    name: str
+    sourceid: str
     pages_seen: int = 0
     extracted: int = 0
     stored: int = 0
@@ -42,7 +42,7 @@ class SourceStats:
 
     def summary(self) -> str:
         return (
-            f"source={self.name} pages={self.pages_seen} extracted={self.extracted} "
+            f"source={self.sourceid} pages={self.pages_seen} extracted={self.extracted} "
             f"stored={self.stored} robots_skip={self.skipped_robots} "
             f"static_ok={self.static_ok} headless_ok={self.headless_ok} "
             f"hybrid_fallback={self.hybrid_fallback} headless_err={self.headless_errors} "
@@ -217,7 +217,7 @@ def _process_page(
 
     try:
         meta = {"fetch-mode": "headless" if (result.source or "").startswith("headless") else "static"}
-        key = store.put_jsonld(source.name, page_url, result.data, metadata=meta)
+        key = store.put_jsonld(source.sourceid, page_url, result.data, metadata=meta)
         logger.info("Stored %s ← %s (%s)", key, page_url, result.source)
         with stats_lock:
             stats.stored += 1
@@ -237,12 +237,12 @@ def crawl_source(
     *,
     limit: int | None = None,
 ) -> SourceStats:
-    stats = SourceStats(name=source.name)
+    stats = SourceStats(sourceid=source.sourceid)
     stats_lock = threading.Lock()
 
     if source.headless and headless is None:
         msg = (
-            f"Source '{source.name}' has headless=true but summoner.headless "
+            f"Source '{source.sourceid}' has headless=true but summoner.headless "
             "Browserless URL is not configured"
         )
         logger.warning(msg)
@@ -251,7 +251,7 @@ def crawl_source(
         return stats
 
     if source.sourcetype and source.sourcetype.lower() not in ("sitemap", "sitegraph", ""):
-        msg = f"Source '{source.name}' sourcetype={source.sourcetype!r} not supported (only sitemap, sitegraph)"
+        msg = f"Source '{source.sourceid}' sourcetype={source.sourcetype!r} not supported (only sitemap, sitegraph)"
         logger.warning(msg)
         stats.errors += 1
         stats.messages.append(msg)
@@ -268,7 +268,7 @@ def crawl_source(
                 # use @id if present, otherwise fallback to source.url
                 item_url = item.get("@id") or source.url
                 meta = {"fetch-mode": "sitegraph", "source-url": source.url}
-                key = store.put_jsonld(source.name, item_url, item, metadata=meta)
+                key = store.put_jsonld(source.sourceid, item_url, item, metadata=meta)
                 logger.info("Stored %s (from sitegraph %s)", key, source.url)
                 stats.stored += 1
             except Exception as exc:  # noqa: BLE001
@@ -295,7 +295,7 @@ def crawl_source(
         mode = "hybrid(static→headless)"
     logger.info(
         "Source %s: %d page URL(s) to process [%s]",
-        source.name,
+        source.sourceid,
         stats.pages_seen,
         mode,
     )
@@ -338,15 +338,15 @@ def crawl_source(
 def run_crawl(
     cfg: AppConfig,
     *,
-    source_name: str | None = None,
+    sourceid: str | None = None,
     limit: int | None = None,
     dry_run: bool = False,
     rude: bool = False,
 ) -> CrawlResult:
-    sources = cfg.select_sources(source_name)
+    sources = cfg.select_sources(sourceid)
     if not sources:
-        if source_name:
-            raise ValueError(f"No active source named '{source_name}'")
+        if sourceid:
+            raise ValueError(f"No active source with sourceid '{sourceid}'")
         raise ValueError("No active sources in config")
 
     needs_headless = any(s.headless for s in sources)
@@ -366,7 +366,7 @@ def run_crawl(
         with httpx.Client(timeout=timeout, headers=headers, follow_redirects=True) as client:
             robots = RobotsCache(client, cfg.summoner.user_agent, rude=rude)
             for source in sources:
-                logger.info("=== Summoning source: %s (%s) ===", source.name, source.url)
+                logger.info("=== Summoning source: %s (%s) ===", source.sourceid, source.url)
                 stats = crawl_source(
                     source,
                     cfg,

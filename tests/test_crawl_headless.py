@@ -25,6 +25,10 @@ def _app(hybrid: bool = True, headless_url: str = "http://localhost:3000") -> Ap
             headless_hybrid=hybrid,
             threads=1,
             delay=0,
+            headless_timeout_ms=30000,
+            headless_concurrent=1,
+            headless_wait_ms=0,
+            user_agent="test-agent",
         ),
         sources=[],
     )
@@ -41,8 +45,8 @@ def test_static_only_success() -> None:
         return httpx.Response(200, text=html, headers={"content-type": "text/html"})
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    stats = SourceStats(name="x")
-    source = SourceConfig(name="x", url="https://ex/s.xml", headless=False)
+    stats = SourceStats(sourceid="x")
+    source = SourceConfig(sourceid="x", url="https://ex/s.xml", headless=False)
     result = _fetch_and_extract(
         page_url="https://ex/page",
         source=source,
@@ -73,8 +77,8 @@ def test_hybrid_fallback_to_headless() -> None:
     headless = MagicMock()
     headless.render_html.return_value = rendered
 
-    stats = SourceStats(name="x")
-    source = SourceConfig(name="x", url="https://ex/s.xml", headless=True)
+    stats = SourceStats(sourceid="x")
+    source = SourceConfig(sourceid="x", url="https://ex/s.xml", headless=True)
     result = _fetch_and_extract(
         page_url="https://ex/page",
         source=source,
@@ -104,8 +108,8 @@ def test_headless_only_when_hybrid_false() -> None:
     client = httpx.Client(
         transport=httpx.MockTransport(lambda r: (_ for _ in ()).throw(AssertionError("static")))
     )
-    stats = SourceStats(name="x")
-    source = SourceConfig(name="x", url="https://ex/s.xml", headless=True)
+    stats = SourceStats(sourceid="x")
+    source = SourceConfig(sourceid="x", url="https://ex/s.xml", headless=True)
     result = _fetch_and_extract(
         page_url="https://ex/page",
         source=source,

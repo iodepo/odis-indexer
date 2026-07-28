@@ -28,13 +28,13 @@ summoner:
     delay: 100
     user_agent: "test-summoner/0.1"
 sources:
-  - name: active_src
+  - sourceid: active_src
     url: http://example.com/sitemap.xml
     active: true
-  - name: headless_src
+  - sourceid: headless_src
     url: http://example.com/headless
     active: true
     headless: true
-  - name: inactive_src
+  - sourceid: inactive_src
     url: http://example.com/inactive
     active: false

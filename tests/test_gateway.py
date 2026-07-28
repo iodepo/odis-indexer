@@ -82,15 +82,15 @@ def test_main_all_sources(
     # In sample_config.yaml there are 2 active sources: active_src and headless_src
     # plus 1 inactive: inactive_src
     mock_source1 = MagicMock()
-    mock_source1.name = "src1"
+    mock_source1.sourceid = "src1"
     mock_source1.active = True
     
     mock_source2 = MagicMock()
-    mock_source2.name = "src2"
+    mock_source2.sourceid = "src2"
     mock_source2.active = True
     
     mock_source3 = MagicMock()
-    mock_source3.name = "src3"
+    mock_source3.sourceid = "src3"
     mock_source3.active = False
     
     mock_config.sources = [mock_source1, mock_source2, mock_source3]
@@ -143,8 +143,8 @@ def test_main_failure_continues(
     mock_get_indexer_main.return_value = mock_indexer
     
     mock_config = MagicMock()
-    mock_s1 = MagicMock(); mock_s1.name = "fail-src"; mock_s1.active = True
-    mock_s2 = MagicMock(); mock_s2.name = "ok-src"; mock_s2.active = True
+    mock_s1 = MagicMock(); mock_s1.sourceid = "fail-src"; mock_s1.active = True
+    mock_s2 = MagicMock(); mock_s2.sourceid = "ok-src"; mock_s2.active = True
     mock_config.sources = [mock_s1, mock_s2]
     
     mock_load_config = MagicMock(return_value=mock_config)

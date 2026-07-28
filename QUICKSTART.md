@@ -112,7 +112,7 @@ This executes **summoner**, **scribe**, and **indexer** in sequence for each sou
 
 ## Harvest JSON-LD (summoner)
 
-look in sources.yaml for a source name and replace [SOURCE] by this name
+look in sources.yaml for a source ID and replace [SOURCE] by this name
 
 ```bash
 # dry-run only (no S3 write)
@@ -133,7 +133,7 @@ Metadata on each object includes harvest page URL (`source-url`).
 
 ## Load graph (scribe → Oxigraph)
 
-look in sources.yaml for a source name and replace [SOURCE] by this name
+look in sources.yaml for a source ID and replace [SOURCE] by this name
 
 ```bash
 python -m scribe --config config.yaml --source [SOURCE]

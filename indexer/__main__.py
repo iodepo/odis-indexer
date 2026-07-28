@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--source",
         "-s",
         required=True,
-        help="Source name (S3 prefix summoned/<name>/), e.g. medin",
+        help="Source ID (S3 prefix summoned/<sourceid>/), e.g. medin",
     )
     parser.add_argument(
         "--limit",

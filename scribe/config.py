@@ -45,39 +45,39 @@ class AppConfig:
     triplestore: TriplestoreConfig
 
 
-def graph_iri(source: str) -> str:
+def graph_iri(sourceid: str) -> str:
     """Named graph IRI for a source, e.g. urn:odis:medin."""
-    name = source.strip()
+    name = sourceid.strip()
     if not name:
-        raise ValueError("source name must be non-empty")
+        raise ValueError("source sourceid must be non-empty")
     return f"urn:odis:{name}"
 
 
-def prov_graph_iri(source: str) -> str:
+def prov_graph_iri(sourceid: str) -> str:
     """Named graph IRI for harvest/load provenance, e.g. urn:odis:prov:medin."""
-    name = source.strip()
+    name = sourceid.strip()
     if not name:
-        raise ValueError("source name must be non-empty")
+        raise ValueError("source sourceid must be non-empty")
     return f"urn:odis:prov:{name}"
 
 
-def object_iri(source: str, sha: str) -> str:
+def object_iri(sourceid: str, sha: str) -> str:
     """Entity IRI for a summoned JSON-LD object, e.g. urn:odis:object:medin:<sha>."""
-    name = source.strip()
+    name = sourceid.strip()
     digest = sha.strip()
     if not name:
-        raise ValueError("source name must be non-empty")
+        raise ValueError("source sourceid must be non-empty")
     if not digest:
         raise ValueError("object sha must be non-empty")
     return f"urn:odis:object:{name}:{digest}"
 
 
-def activity_iri(source: str, sha: str) -> str:
+def activity_iri(sourceid: str, sha: str) -> str:
     """Activity IRI for loading one summoned object into the triplestore."""
-    name = source.strip()
+    name = sourceid.strip()
     digest = sha.strip()
     if not name:
-        raise ValueError("source name must be non-empty")
+        raise ValueError("source sourceid must be non-empty")
     if not digest:
         raise ValueError("object sha must be non-empty")
     return f"urn:odis:activity:scribe:{name}:{digest}"

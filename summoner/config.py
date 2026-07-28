@@ -54,7 +54,7 @@ class SummonerConfig:
 
 @dataclass(frozen=True)
 class SourceConfig:
-    name: str
+    sourceid: str
     url: str
     sourcetype: str = "sitemap"
     active: bool = True
@@ -69,11 +69,11 @@ class AppConfig:
     summoner: SummonerConfig
     sources: list[SourceConfig] = field(default_factory=list)
 
-    def select_sources(self, name: str | None = None) -> list[SourceConfig]:
-        """Return active sources, optionally filtered by name."""
+    def select_sources(self, sourceid: str | None = None) -> list[SourceConfig]:
+        """Return active sources, optionally filtered by sourceid."""
         selected = [s for s in self.sources if s.active]
-        if name is not None:
-            selected = [s for s in selected if s.name == name]
+        if sourceid is not None:
+            selected = [s for s in selected if s.sourceid == sourceid]
         return selected
 
 
@@ -99,9 +99,9 @@ def _parse_summoner(raw: dict[str, Any] | None) -> SummonerConfig:
     if not raw:
         raise ValueError("Missing 'summoner' section in config")
 
-    token = str(raw.get("headless_token", "") or raw.get("headlessToken", "") or "")
+    token = os.environ.get("BROWSERLESS_TOKEN", "")
     if not token:
-        token = os.environ.get("BROWSERLESS_TOKEN", "") or ""
+        token = str(raw.get("headless_token", "") or raw.get("headlessToken", "") or "")
 
     return SummonerConfig(
         headless=str(raw.get("headless", "") or ""),
@@ -132,10 +132,10 @@ def _parse_summoner(raw: dict[str, Any] | None) -> SummonerConfig:
 
 
 def _parse_source(raw: dict[str, Any]) -> SourceConfig:
-    name = str(_require(raw, "name", "sources[]"))
-    url = str(_require(raw, "url", f"sources[{name}]"))
+    sourceid = str(_require(raw, "sourceid", "sources[]"))
+    url = str(_require(raw, "url", f"sources[{sourceid}]"))
     return SourceConfig(
-        name=name,
+        sourceid=sourceid,
         url=url,
         sourcetype=str(raw.get("sourcetype", "sitemap") or "sitemap"),
         active=bool(raw.get("active", True)),
