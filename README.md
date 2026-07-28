@@ -115,7 +115,7 @@ This command should be run from the crontab once a day.
 
 Enter this in crontab, adjust the path to your path.
 ```crontab
-0 2 * * * cd /data/odis-indexer && ./venv/bin/python manager.py > /data/odis-indexer/logs/manager.log 2>&1
+0 2 * * * cd /data/odis-indexer && ./.venv/bin/python manager.py > /data/odis-indexer/logs/manager.log 2>&1
 ```
 
 ### Sequential Execution (Gateway)
