@@ -1,6 +1,7 @@
 services:
   floci:
     image: floci/floci:latest          # or :latest-jvm
+    container_name: odis-floci-s3
     ports:
       - "4566:4566"
     volumes:
