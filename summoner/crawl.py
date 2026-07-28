@@ -146,10 +146,16 @@ def _fetch_and_extract(
                 page_url,
                 static_result.error if static_result else "unknown error",
             )
-            if not use_headless and static_result and static_result.error:
+            # Do NOT return here if headless is possible; let it fall through.
+            # But if NOT using headless, we should count it as error now.
+            if not use_headless:
                 with stats_lock:
-                     if f"{page_url}: {static_result.error}" not in stats.messages:
-                         stats.messages.append(f"{page_url}: {static_result.error}")
+                    stats.errors += 1
+                    if static_result and static_result.error:
+                        msg = f"{page_url}: {static_result.error}"
+                        if msg not in stats.messages:
+                            stats.messages.append(msg)
+                return None
         elif not use_headless:
             with stats_lock:
                 stats.errors += 1
@@ -198,6 +204,10 @@ def _fetch_and_extract(
         logger.error("No JSON-LD at %s: %s", page_url, static_result.error)
     elif static_fetch_error:
         logger.error("Fetch failed for %s: %s", page_url, static_fetch_error)
+    else:
+        # Should not happen as static_result would be set if no error
+        logger.error("No JSON-LD at %s: unknown error", page_url)
+
     with stats_lock:
         stats.errors += 1
         if static_result and static_result.error:
@@ -208,6 +218,10 @@ def _fetch_and_extract(
             msg = f"{page_url}: {static_fetch_error}"
             if msg not in stats.messages:
                 stats.messages.append(msg)
+        else:
+             msg = f"{page_url}: unknown extraction error"
+             if msg not in stats.messages:
+                 stats.messages.append(msg)
     return None
 
 
