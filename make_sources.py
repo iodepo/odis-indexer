@@ -8,17 +8,39 @@ import yaml
 import os
 from datetime import datetime
 import re
+from indexer.config import load_config
+from indexer.elasticsearch_client import build_client, bulk_index
 
 def slugify(text):
     text = text.lower()
     text = re.sub(r'[^a-z0-9]+', '-', text)
     return text.strip('-')
 
+def index_to_es(sources, config_path):
+    print("Indexing sources to Elasticsearch...")
+    try:
+        cfg = load_config(config_path)
+        client = build_client(cfg.search.endpoint)
+        index_name = "odiscat"
+        
+        # Prepare documents
+        documents = []
+        for s in sources:
+            doc = s.copy()
+            doc["_id"] = s["sourceid"]
+            documents.append(doc)
+        
+        success, errors = bulk_index(client, index_name, documents)
+        print(f"ES Indexing complete: {success} successes, {errors} errors")
+    except Exception as e:
+        print(f"Error indexing to ES: {e}")
+
 def main():
     url = "https://catalogue.odis.org/odis-arch-records"
     # Determine script directory to use absolute paths
     script_dir = os.path.dirname(os.path.abspath(__file__))
     sources_path = os.path.join(script_dir, "sources.yaml")
+    config_path = os.path.join(script_dir, "config.yaml")
     
     print(f"Fetching records from {url}...")
     try:
@@ -78,6 +100,9 @@ def main():
     print(f"Writing new {sources_path}...")
     with open(sources_path, 'w') as f:
         yaml.dump(output_data, f, sort_keys=False, default_flow_style=False)
+    
+    # Index to ES
+    index_to_es(new_sources, config_path)
     
     print("Done!")
 
