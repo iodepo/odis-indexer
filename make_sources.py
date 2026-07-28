@@ -37,24 +37,21 @@ def main():
         # ds_url -> domain
         # odis_arch_url -> url
         # odis_arch_type -> sourcetype
-        # id -> pid
+        # id -> odiscatid
         
-        proper_name = rec.get("ds_name_english", "")
-        base_id = slugify(proper_name)
-        
-        sourceid = base_id
+        sourceid = slugify(rec.get("ds_name_english", ""))
         counter = 1
         while sourceid in used_sourceids:
-            sourceid = f"{base_id}-{counter}"
+            sourceid = f"{sourceid}-{counter}"
             counter += 1
         
         used_sourceids.add(sourceid)
         
         source_entry = {
             "sourceid": sourceid,
-            "name": proper_name,
+            "name": rec.get("ds_name_english", ""),
             "domain": rec.get("ds_url", ""),
-            "pid": f"https://catalogue.odis.org/view/{rec.get('id')}",
+            "odiscatid": rec.get('id'),
             "sourcetype": rec.get("odis_arch_type", "").lower(),
             "url": rec.get("odis_arch_url", ""),
             "changefreq": "daily", # Defaulting as seen in original
