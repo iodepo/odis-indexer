@@ -39,7 +39,7 @@ def test_bulk_index_pops_id() -> None:
     ]
     with patch("indexer.elasticsearch_client.helpers.bulk") as bulk:
         bulk.return_value = (1, [])
-        success, errors = bulk_index(client, "odis-medin", docs)
+        success, errors = bulk_index(client, "odis", docs)
     assert success == 1
     assert errors == []
     actions = list(bulk.call_args[0][1])

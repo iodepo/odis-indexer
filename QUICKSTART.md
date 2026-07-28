@@ -93,12 +93,15 @@ python make_sources.py
 ```
 ## Harvest and Load (The easy way)
 
-You can run the entire pipeline for all sources defined in `sources.yaml` in parallel using the `manager.py` script. The number of parallel processes is controlled by the `manager.max_parallel_processes` setting in `config.yaml`.
+You can run the entire pipeline for all sources defined in `sources.yaml` in parallel using the `manager.py` script. 
+The number of parallel processes is controlled by the `manager.max_parallel_processes` setting in `config.yaml`.
 
 ```bash
 # Process all sources in parallel
 python manager.py --limit 5
 ```
+
+You should add this to the crontab, see the README file for example.
 
 Alternatively, you can run the pipeline for one or all sources (sequentially) using the `gateway.py` script:
 
@@ -172,13 +175,13 @@ curl -s -X POST http://localhost:7878/query \
 python -m indexer --config config.yaml --source [SOURCE]
 ```
 
-Index: `odis-[SOURCE]`
+Index: `odis`
 
 Check:
 
 ```bash
-curl -s 'http://localhost:9400/odis-[SOURCE]/_count'
-curl -s 'http://localhost:9400/odis-[SOURCE]/_search' \
+curl -s 'http://localhost:9400/odis/_count'
+curl -s 'http://localhost:9400/odis/_search' \
   -H 'Content-Type: application/json' \
   -d '{"query":{"multi_match":{"query":"topographic","fields":["name","description","keywords"]}},"_source":["name","url","source_url"]}'
 ```

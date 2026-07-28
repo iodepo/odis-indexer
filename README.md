@@ -98,7 +98,7 @@ The output file can be opened directly in a browser. It uses local dependencies 
 
 ---
 
-## One-shot (Gateway & Manager)
+## Running the indexer (Gateway & Manager)
 
 Execute summoner, scribe, and indexer in sequence for one or all sources.
 
@@ -109,6 +109,13 @@ Run the entire pipeline for all sources in parallel. Concurrency is limited by `
 ```bash
 # Process all active sources in parallel
 python manager.py --limit 5
+```
+
+This command should be run from the crontab once a day.
+
+Enter this in crontab, adjust the path to your path.
+```crontab
+0 2 * * * cd /data/odis-indexer && ./venv/bin/python manager.py > /data/odis-indexer/logs/manager.log 2>&1
 ```
 
 ### Sequential Execution (Gateway)
@@ -157,7 +164,8 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 | `summoner.headless_hybrid` | Static first, then Browserless if needed |
 | `sources[].headless` | Opt-in Browserless for that source |
 
-**Not a Cloudflare bypass.** Open-source Browserless does not solve bot walls (e.g. CIOOS HTML 403). Headless only helps when JS actually injects JSON-LD into the DOM.
+**Not a Cloudflare bypass.** Open-source Browserless does not solve bot walls (e.g. CIOOS HTML 403). 
+Headless only helps when JS actually injects JSON-LD into the DOM.
 
 ```bash
 python -m summoner --config config.yaml
@@ -178,7 +186,8 @@ python -m summoner --config config.yaml --source medin --limit 5 --dry-run -v
 
 ## Scribe
 
-Load summoned JSON-LD into Oxigraph as quads. **Replaces** both the data and provenance named graphs on each run (`CLEAR` then bulk N-Quads).
+Load summoned JSON-LD into Oxigraph as quads. 
+**Replaces** both the data and provenance named graphs on each run (`CLEAR` then bulk N-Quads).
 
 | Graph | Contents |
 |-------|----------|
@@ -263,8 +272,8 @@ python -m indexer --config config.yaml --source medin --limit 5 --dry-run -v
 ### Search examples
 
 ```bash
-curl -s 'http://localhost:9400/odis-medin/_count'
-curl -s 'http://localhost:9400/odis-medin/_search' \
+curl -s 'http://localhost:9400/odis/_count'
+curl -s 'http://localhost:9400/odis/_search' \
   -H 'Content-Type: application/json' \
   -d '{"query":{"multi_match":{"query":"coastal","fields":["name","description","keywords"]}},"_source":["name","url","source_url"]}'
 ```
