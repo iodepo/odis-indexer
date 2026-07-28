@@ -111,6 +111,17 @@ def run_load(
     if not docs:
         stats.messages.append("nothing to index after extraction")
         logger.error(stats.messages[-1])
+        es = build_client(cfg.search.base_endpoint)
+        # Try to load summoner stats even if no docs extracted
+        try:
+            stats_key = f"summoned/{source}/stats.json"
+            if s3.bucket_exists(bucket):
+                stats_bytes = s3.get_object(bucket, stats_key).read()
+                stats.summoner_stats = json.loads(stats_bytes)
+                logger.info("Loaded summoner stats for %s (no docs)", source)
+        except Exception as exc:
+            logger.debug("No summoner stats found for %s (no docs): %s", source, exc)
+        update_odiscat_stats(es, stats)
         return stats
 
     es = build_client(cfg.search.base_endpoint)
@@ -155,6 +166,12 @@ def update_odiscat_stats(client: Elasticsearch, stats: LoadStats) -> None:
             "indexed_count": stats.indexed,
             "indexed_errors": stats.errors + len([m for m in stats.messages if "ID " in m]),
             "indexed_error_messages": stats.messages,
+            # Reset summoner fields if no summoner stats provided, or they will be overwritten below
+            "summoner_pages_seen": 0,
+            "summoner_extracted": 0,
+            "summoner_stored": 0,
+            "summoner_errors": 0,
+            "summoner_messages": [],
         }
     }
     

@@ -299,7 +299,8 @@ def crawl_source(
         msg = f"Source '{source.sourceid}' sourcetype={source.sourcetype!r} not supported (only sitemap, sitegraph)"
         logger.warning(msg)
         stats.errors += 1
-        stats.messages.append(msg)
+        if msg not in stats.messages:
+            stats.messages.append(msg)
         _save_stats(store, source.sourceid, stats)
         return stats
 
@@ -320,8 +321,11 @@ def crawl_source(
                 logger.info("Stored %s (from sitegraph %s)", key, source.url)
                 stats.stored += 1
             except Exception as exc:  # noqa: BLE001
-                logger.error("Store failed for sitegraph item from %s: %s", source.url, exc)
+                msg = f"Store failed for sitegraph item from {source.url}: {exc}"
+                logger.error(msg)
                 stats.errors += 1
+                if msg not in stats.messages:
+                    stats.messages.append(msg)
         logger.info(stats.summary())
         _save_stats(store, source.sourceid, stats)
         return stats
@@ -352,7 +356,9 @@ def crawl_source(
     )
 
     if not unique_pages:
-        stats.messages.append("no page URLs from sitemap")
+        msg = "no page URLs from sitemap"
+        if msg not in stats.messages:
+             stats.messages.append(msg)
         _save_stats(store, source.sourceid, stats)
         return stats
 
