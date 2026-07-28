@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock
 
 import httpx
@@ -228,6 +229,14 @@ def test_invalid_sitemap_reporting() -> None:
     
     assert stats.errors > 0
     assert any("Invalid XML sitemap" in msg for msg in stats.messages)
+    
+    # Check that put_stats was called
+    store.put_stats.assert_called_once()
+    args, kwargs = store.put_stats.call_args
+    assert args[0] == "x"
+    stats_json = json.loads(args[1])
+    assert stats_json["sourceid"] == "x"
+    assert any("Invalid XML sitemap" in msg for msg in stats_json["messages"])
     client.close()
 
 

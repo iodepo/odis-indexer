@@ -28,6 +28,8 @@ class ObjectWriter(Protocol):
         metadata: dict[str, str] | None = None,
     ) -> str: ...
 
+    def put_stats(self, source_name: str, stats_json: str) -> None: ...
+
 
 def sha1_key(page_url: str) -> str:
     return hashlib.sha1(page_url.encode("utf-8")).hexdigest()
@@ -94,6 +96,18 @@ class S3Store:
         logger.debug("Stored s3://%s/%s (%d bytes)", self.bucket, key, len(payload))
         return key
 
+    def put_stats(self, source_name: str, stats_json: str) -> None:
+        key = f"summoned/{source_name}/stats.json"
+        payload = stats_json.encode("utf-8")
+        self.client.put_object(
+            self.bucket,
+            key,
+            BytesIO(payload),
+            length=len(payload),
+            content_type="application/json",
+        )
+        logger.info("Stored stats s3://%s/%s", self.bucket, key)
+
 
 class DryRunStore:
     """No-op store that only reports keys that would be written."""
@@ -109,6 +123,9 @@ class DryRunStore:
         key = object_key(source_name, page_url)
         logger.info("[dry-run] would store %s from %s", key, page_url)
         return key
+
+    def put_stats(self, source_name: str, stats_json: str) -> None:
+        logger.info("[dry-run] would store stats for %s: %s", source_name, stats_json)
 
 
 def _safe_meta(value: str) -> str:

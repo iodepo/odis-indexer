@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
@@ -48,6 +49,10 @@ class SourceStats:
             f"hybrid_fallback={self.hybrid_fallback} headless_err={self.headless_errors} "
             f"headless_skip={self.skipped_headless} errors={self.errors}"
         )
+
+    def to_json(self) -> str:
+        from dataclasses import asdict
+        return json.dumps(asdict(self), indent=2)
 
 
 @dataclass
@@ -273,6 +278,7 @@ def crawl_source(
         logger.warning(msg)
         stats.skipped_headless += 1
         stats.messages.append(msg)
+        _save_stats(store, source.sourceid, stats)
         return stats
 
     if source.sourcetype and source.sourcetype.lower() not in ("sitemap", "sitegraph", ""):
@@ -280,6 +286,7 @@ def crawl_source(
         logger.warning(msg)
         stats.errors += 1
         stats.messages.append(msg)
+        _save_stats(store, source.sourceid, stats)
         return stats
 
     stype = (source.sourcetype or "sitemap").lower()
@@ -302,6 +309,7 @@ def crawl_source(
                 logger.error("Store failed for sitegraph item from %s: %s", source.url, exc)
                 stats.errors += 1
         logger.info(stats.summary())
+        _save_stats(store, source.sourceid, stats)
         return stats
 
     page_urls = collect_page_urls(source.url, client, limit=limit, errors=stats.messages)
@@ -331,6 +339,7 @@ def crawl_source(
 
     if not unique_pages:
         stats.messages.append("no page URLs from sitemap")
+        _save_stats(store, source.sourceid, stats)
         return stats
 
     rate = RateLimiter(cfg.summoner.delay)
@@ -361,7 +370,15 @@ def crawl_source(
                     stats.errors += 1
 
     logger.info(stats.summary())
+    _save_stats(store, source.sourceid, stats)
     return stats
+
+
+def _save_stats(store: ObjectWriter, sourceid: str, stats: SourceStats) -> None:
+    try:
+        store.put_stats(sourceid, stats.to_json())
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to store stats for %s: %s", sourceid, exc)
 
 
 def run_crawl(
