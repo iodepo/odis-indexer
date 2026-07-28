@@ -39,3 +39,4 @@ venv/
 gateway_*.txt
 gateway_*.log
 logs/*
+manager.lock

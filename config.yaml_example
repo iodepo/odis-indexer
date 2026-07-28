@@ -27,3 +27,6 @@ summoner:
     threads: 5
     delay: 250
     user_agent: "odis-summoner/0.1"
+manager:
+    max_parallel_processes: 5
+    #script_to_run: gateway.py

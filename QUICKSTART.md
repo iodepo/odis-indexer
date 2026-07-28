@@ -17,7 +17,7 @@ cd odis-indexer
 ## Python env
 
 ```bash
-python3 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
@@ -93,16 +93,20 @@ python make_sources.py
 ```
 ## Harvest and Load (The easy way)
 
-You can run the entire pipeline for one or all sources using the `gateway.py` script.
+You can run the entire pipeline for all sources defined in `sources.yaml` in parallel using the `manager.py` script. The number of parallel processes is controlled by the `manager.max_parallel_processes` setting in `config.yaml`.
 
 ```bash
-# Process all active sources in one command
-python gateway.py --source all --limit 5
+# Process all sources in parallel
+python manager.py --limit 5
 ```
 
-Or for a single source:
+Alternatively, you can run the pipeline for one or all sources (sequentially) using the `gateway.py` script:
 
 ```bash
+# Process all sources sequentially
+python gateway.py --source all --limit 5
+
+# Process a single source
 python gateway.py --source [SOURCE] --limit 5
 ```
 

@@ -41,7 +41,7 @@ Sitemap / pages
 ## Install
 
 ```bash
-python3 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -98,19 +98,27 @@ The output file can be opened directly in a browser. It uses local dependencies 
 
 ---
 
-## One-shot (Gateway)
+## One-shot (Gateway & Manager)
 
 Execute summoner, scribe, and indexer in sequence for one or all sources.
+
+### Parallel Execution (Manager)
+
+Run the entire pipeline for all sources in parallel. Concurrency is limited by `max_parallel_processes` in `config.yaml`.
+
+```bash
+# Process all active sources in parallel
+python manager.py --limit 5
+```
+
+### Sequential Execution (Gateway)
 
 ```bash
 # Process a single source
 python gateway.py --source medin
 
-# Process ALL active sources
+# Process ALL active sources sequentially
 python gateway.py --source all
-
-# Smoke test all sources (limit to 1 page each, dry run)
-python gateway.py --source all --limit 1 --dry-run
 ```
 
 | Flag | Meaning |
