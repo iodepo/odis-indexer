@@ -83,15 +83,19 @@ class RateLimiter:
 def _static_fetch(
     client: httpx.Client,
     page_url: str,
-) -> tuple[str, str] | None:
-    """Return (html, content_type) or None on HTTP failure."""
+) -> tuple[str, str, str | None]:
+    """Return (html, content_type, error_msg).
+
+    If fetch failed, html and content_type will be empty, and error_msg will be set.
+    """
     try:
         response = client.get(page_url)
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        logger.warning("Static fetch failed %s: %s", page_url, exc)
-        return None
-    return response.text, response.headers.get("content-type", "")
+        msg = str(exc)
+        logger.error("Static fetch failed %s: %s", page_url, msg)
+        return "", "", msg
+    return response.text, response.headers.get("content-type", ""), None
 
 
 def _fetch_and_extract(
@@ -123,10 +127,10 @@ def _fetch_and_extract(
 
     # --- Static path ---
     static_result: ExtractResult | None = None
+    static_fetch_error: str | None = None
     if not use_headless or hybrid:
-        fetched = _static_fetch(http_client, page_url)
-        if fetched is not None:
-            html, content_type = fetched
+        html, content_type, static_fetch_error = _static_fetch(http_client, page_url)
+        if not static_fetch_error:
             static_result = extract_jsonld(page_url, html, content_type)
             if static_result.ok:
                 with stats_lock:
@@ -135,11 +139,17 @@ def _fetch_and_extract(
             logger.debug(
                 "Static extract miss %s: %s",
                 page_url,
-                static_result.error if static_result else "fetch failed",
+                static_result.error if static_result else "unknown error",
             )
+            if not use_headless and static_result and static_result.error:
+                with stats_lock:
+                     if f"{page_url}: {static_result.error}" not in stats.messages:
+                         stats.messages.append(f"{page_url}: {static_result.error}")
         elif not use_headless:
             with stats_lock:
                 stats.errors += 1
+                if static_fetch_error and f"{page_url}: {static_fetch_error}" not in stats.messages:
+                    stats.messages.append(f"{page_url}: {static_fetch_error}")
             return None
 
     # --- Headless path ---
@@ -151,10 +161,13 @@ def _fetch_and_extract(
         try:
             html = headless.render_html(page_url)
         except HeadlessError as exc:
-            logger.warning("Headless fetch failed %s: %s", page_url, exc)
+            msg = str(exc)
+            logger.warning("Headless fetch failed %s: %s", page_url, msg)
             with stats_lock:
                 stats.headless_errors += 1
                 stats.errors += 1
+                if msg not in stats.messages:
+                    stats.messages.append(f"{page_url}: {msg}")
             return None
         result = extract_jsonld(page_url, html, "text/html")
         if result.ok:
@@ -168,16 +181,28 @@ def _fetch_and_extract(
             with stats_lock:
                 stats.headless_ok += 1
             return result
-        logger.info("No JSON-LD after headless render %s: %s", page_url, result.error)
+        logger.error("No JSON-LD after headless render %s: %s", page_url, result.error)
         with stats_lock:
             stats.errors += 1
+            if result.error not in stats.messages:
+                stats.messages.append(f"{page_url}: {result.error}")
         return None
 
     # Static-only miss
     if static_result is not None:
-        logger.info("No JSON-LD at %s: %s", page_url, static_result.error)
+        logger.error("No JSON-LD at %s: %s", page_url, static_result.error)
+    elif static_fetch_error:
+        logger.error("Fetch failed for %s: %s", page_url, static_fetch_error)
     with stats_lock:
         stats.errors += 1
+        if static_result and static_result.error:
+            msg = f"{page_url}: {static_result.error}"
+            if msg not in stats.messages:
+                stats.messages.append(msg)
+        elif static_fetch_error:
+            msg = f"{page_url}: {static_fetch_error}"
+            if msg not in stats.messages:
+                stats.messages.append(msg)
     return None
 
 
@@ -259,7 +284,9 @@ def crawl_source(
 
     stype = (source.sourcetype or "sitemap").lower()
     if stype == "sitegraph":
-        items = collect_sitegraph_items(source.url, client, limit=limit)
+        items = collect_sitegraph_items(source.url, client, limit=limit, errors=stats.messages)
+        if stats.messages and len(stats.messages) > 0:
+             stats.errors += len(stats.messages)
         stats.pages_seen = 1  # The sitegraph file itself
         stats.extracted = len(items)
         for item in items:
@@ -277,7 +304,9 @@ def crawl_source(
         logger.info(stats.summary())
         return stats
 
-    page_urls = collect_page_urls(source.url, client, limit=limit)
+    page_urls = collect_page_urls(source.url, client, limit=limit, errors=stats.messages)
+    if not page_urls and stats.messages:
+         stats.errors += len(stats.messages)
     # de-dupe preserving order
     seen: set[str] = set()
     unique_pages: list[str] = []

@@ -42,3 +42,20 @@ def test_expand_index_offline(read_fixture, fixtures_dir: Path) -> None:
 def test_invalid_xml() -> None:
     with pytest.raises(ValueError, match="Invalid XML"):
         parse_sitemap_xml("<not-closed")
+
+
+def test_collect_page_urls_invalid_xml() -> None:
+    import httpx
+    from summoner.sitemap import collect_page_urls
+    
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="<invalid xml")
+    
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    errors = []
+    urls = collect_page_urls("https://ex/sitemap.xml", client, errors=errors)
+    
+    assert urls == []
+    assert len(errors) == 1
+    assert "Invalid XML sitemap" in errors[0]
+    client.close()

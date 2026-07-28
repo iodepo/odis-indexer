@@ -15,6 +15,7 @@ def collect_sitegraph_items(
     url: str,
     client: httpx.Client,
     limit: int | None = None,
+    errors: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Fetch a sitegraph URL and extract items from ItemList.
     
@@ -25,12 +26,18 @@ def collect_sitegraph_items(
         response = client.get(url)
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        logger.error("Failed to fetch sitegraph %s: %s", url, exc)
+        msg = f"Failed to fetch sitegraph {url}: {exc}"
+        logger.error(msg)
+        if errors is not None:
+            errors.append(msg)
         return []
 
     result = extract_jsonld(url, response.text, response.headers.get("content-type", ""))
     if not result.ok or not isinstance(result.data, dict):
-        logger.error("Could not parse JSON-LD from %s: %s", url, result.error)
+        msg = f"Could not parse JSON-LD from {url}: {result.error}"
+        logger.error(msg)
+        if errors is not None:
+            errors.append(msg)
         return []
 
     data = result.data

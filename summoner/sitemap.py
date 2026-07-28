@@ -70,6 +70,7 @@ def collect_page_urls(
     seen: set[str] | None = None,
     depth: int = 0,
     limit: int | None = None,
+    errors: list[str] | None = None,
 ) -> list[str]:
     """Recursively expand a sitemap or sitemap index into page URLs.
 
@@ -80,7 +81,10 @@ def collect_page_urls(
         seen = set()
 
     if depth > max_depth:
-        logger.warning("Sitemap recursion depth exceeded at %s (max=%s)", sitemap_url, max_depth)
+        msg = f"Sitemap recursion depth exceeded at {sitemap_url} (max={max_depth})"
+        logger.warning(msg)
+        if errors is not None:
+            errors.append(msg)
         return []
 
     if sitemap_url in seen:
@@ -93,7 +97,10 @@ def collect_page_urls(
         response = client.get(sitemap_url)
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        logger.error("Failed to fetch sitemap %s: %s", sitemap_url, exc)
+        msg = f"Failed to fetch sitemap {sitemap_url}: {exc}"
+        logger.error(msg)
+        if errors is not None:
+            errors.append(msg)
         return []
 
     content_type = (response.headers.get("content-type") or "").lower()
@@ -102,7 +109,10 @@ def collect_page_urls(
     try:
         kind, locs = parse_sitemap_xml(text, base_url=str(response.url))
     except ValueError as exc:
-        logger.error("Could not parse sitemap %s (%s): %s", sitemap_url, content_type, exc)
+        msg = f"Could not parse sitemap {sitemap_url} ({content_type}): {exc}"
+        logger.error(msg)
+        if errors is not None:
+            errors.append(msg)
         return []
 
     if kind == "urlset":
@@ -126,6 +136,7 @@ def collect_page_urls(
                 seen=seen,
                 depth=depth + 1,
                 limit=remaining,
+                errors=errors,
             )
         )
     return pages

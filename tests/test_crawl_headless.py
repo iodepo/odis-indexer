@@ -134,3 +134,124 @@ def test_dry_run_store_accepts_metadata() -> None:
         metadata={"fetch-mode": "headless"},
     )
     assert key.startswith("summoned/s/")
+
+
+def test_fetch_error_reporting() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectTimeout("Connection timed out")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    stats = SourceStats(sourceid="x")
+    source = SourceConfig(sourceid="x", url="https://ex/s.xml", headless=False)
+    
+    result = _fetch_and_extract(
+        page_url="https://ex/page",
+        source=source,
+        cfg=_app(),
+        http_client=client,
+        headless=None,
+        stats=stats,
+        stats_lock=__import__("threading").Lock(),
+    )
+    
+    assert result is None
+    assert stats.errors == 1
+    assert any("Connection timed out" in msg for msg in stats.messages)
+    assert any("https://ex/page" in msg for msg in stats.messages)
+    client.close()
+
+
+def test_404_reporting() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, text="Not Found")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    stats = SourceStats(sourceid="x")
+    source = SourceConfig(sourceid="x", url="https://ex/s.xml", headless=False)
+    
+    result = _fetch_and_extract(
+        page_url="https://ex/page",
+        source=source,
+        cfg=_app(),
+        http_client=client,
+        headless=None,
+        stats=stats,
+        stats_lock=__import__("threading").Lock(),
+    )
+    
+    assert result is None
+    assert stats.errors == 1
+    assert any("404 Not Found" in msg for msg in stats.messages)
+    assert any("https://ex/page" in msg for msg in stats.messages)
+    client.close()
+
+
+def test_403_reporting() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(403, text="Forbidden")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    stats = SourceStats(sourceid="x")
+    source = SourceConfig(sourceid="x", url="https://ex/s.xml", headless=False)
+    
+    result = _fetch_and_extract(
+        page_url="https://ex/page",
+        source=source,
+        cfg=_app(),
+        http_client=client,
+        headless=None,
+        stats=stats,
+        stats_lock=__import__("threading").Lock(),
+    )
+    
+    assert result is None
+    assert stats.errors == 1
+    assert any("403 Forbidden" in msg for msg in stats.messages)
+    assert any("https://ex/page" in msg for msg in stats.messages)
+    client.close()
+
+
+def test_invalid_sitemap_reporting() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/sitemap.xml":
+            return httpx.Response(200, text="<invalid xml")
+        return httpx.Response(404)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    source = SourceConfig(sourceid="x", url="https://ex/sitemap.xml", headless=False)
+    cfg = _app()
+    store = MagicMock()
+    robots = MagicMock()
+    
+    from summoner.crawl import crawl_source
+    stats = crawl_source(source, cfg, store, client, robots, None)
+    
+    assert stats.errors > 0
+    assert any("Invalid XML sitemap" in msg for msg in stats.messages)
+    client.close()
+
+
+def test_headless_timeout_reporting() -> None:
+    from summoner.browserless import HeadlessError
+    
+    client = httpx.Client()
+    headless = MagicMock()
+    headless.render_html.side_effect = HeadlessError("Browserless request failed for https://ex/page: timed out")
+    
+    stats = SourceStats(sourceid="x")
+    source = SourceConfig(sourceid="x", url="https://ex/s.xml", headless=True)
+    
+    result = _fetch_and_extract(
+        page_url="https://ex/page",
+        source=source,
+        cfg=_app(hybrid=False),
+        http_client=client,
+        headless=headless,
+        stats=stats,
+        stats_lock=__import__("threading").Lock(),
+    )
+    
+    assert result is None
+    assert stats.errors == 1
+    assert any("timed out" in msg for msg in stats.messages)
+    assert any("https://ex/page" in msg for msg in stats.messages)
