@@ -18,25 +18,42 @@ LOCK_FILE = "manager.lock"
 def run_task(item_name, script_path, extra_args):
     """
     Function executed by the worker threads.
-    It starts the external python script as a subprocess.
+    It starts the external python script as a subprocess and streams output.
     """
-    print(f"[STARTING] {item_name}")
+    print(f"[STARTING] {item_name}", flush=True)
     try:
         # Construct the command: python3 script_to_run.py --source item_name [extra_args]
-        # gateway.py expects --source (or -s)
-        # Ensure we are using the absolute path of the script
         cmd = [sys.executable, script_path, '--source', item_name]
         cmd.extend(extra_args)
         
-        result = subprocess.run(
+        # Using Popen to stream output or at least not capture it all at once if we want to see it in real-time
+        # However, to avoid interleaving issues when running in parallel, 
+        # it might be better to just let it inherit stdout/stderr if we are okay with interleaving,
+        # OR we capture it and print it as it comes.
+        # But since the user wants to see it in the log, they probably want it as it's produced.
+        
+        # If we use subprocess.run with capture_output=False (default), it goes to the parent's stdout.
+        # But then multiple processes will interleave their output.
+        # Given the manager.log redirection, interleaving might be confusing but at least it shows up.
+        
+        process = subprocess.Popen(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
-            check=True
+            bufsize=1,
+            universal_newlines=True
         )
-        return f"[DONE] {item_name} (Success)"
-    except subprocess.CalledProcessError as e:
-        return f"[FAILED] {item_name} - Error: {e.stderr.strip()}"
+        
+        for line in process.stdout:
+            print(f"[{item_name}] {line}", end="", flush=True)
+            
+        process.wait()
+        
+        if process.returncode == 0:
+            return f"[DONE] {item_name} (Success)"
+        else:
+            return f"[FAILED] {item_name} - Exit code: {process.returncode}"
     except Exception as e:
         return f"[ERROR] {item_name} - {str(e)}"
 
@@ -51,7 +68,7 @@ def main():
         lock_file_handle = open(lock_file_path, 'a')
         fcntl.flock(lock_file_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except (IOError, OSError):
-        print("Error: Another instance of manager.py is already running.")
+        print("Error: Another instance of manager.py is already running.", flush=True)
         sys.exit(1)
 
     parser = argparse.ArgumentParser(
@@ -106,7 +123,7 @@ def main():
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
     except FileNotFoundError:
-        print(f"Error: {config_file} not found.")
+        print(f"Error: {config_file} not found.", flush=True)
         return
 
     manager_config = config.get('manager', {})
@@ -125,13 +142,13 @@ def main():
         with open(sources_file, 'r') as f:
             sources_data = yaml.safe_load(f)
     except FileNotFoundError:
-        print(f"Error: {sources_file} not found.")
+        print(f"Error: {sources_file} not found.", flush=True)
         return
 
     sources = sources_data.get('sources', [])
-    items = [s['sourceid'] for s in sources if 'sourceid' in s]
+    items = [s['sourceid'] for s in sources if 'sourceid' in s and s.get('active', True)]
 
-    print(f"Loaded {len(items)} items from sources.yaml. Concurrency limit: {max_workers}\n")
+    print(f"Loaded {len(items)} items from sources.yaml. Concurrency limit: {max_workers}\n", flush=True)
 
     # 3. Use ThreadPoolExecutor to manage parallel execution
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -145,11 +162,11 @@ def main():
             item = future_to_item[future]
             try:
                 status_message = future.result()
-                print(status_message)
+                print(status_message, flush=True)
             except Exception as e:
-                print(f"[CRITICAL] {item} generated an unhandled exception: {e}")
+                print(f"[CRITICAL] {item} generated an unhandled exception: {e}", flush=True)
 
-    print("\nAll processes have finished.")
+    print("\nAll processes have finished.", flush=True)
 
 if __name__ == "__main__":
     main()
