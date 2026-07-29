@@ -5,7 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import Any
+from typing import Any, Optional
+
+if __name__ == "indexer.extract":
+    from .resolver import Resolver
+else:
+    # Fallback for scripts or direct execution if needed
+    Resolver = Any
 
 logger = logging.getLogger(__name__)
 
@@ -101,12 +107,16 @@ def extract_document(
     graph: str,
     index_in_file: int = 0,
     source_url: str | None = None,
+    resolver: Optional[Resolver] = None,
 ) -> dict[str, Any]:
     """Build one ES document with search facade + full jsonld.
 
     ``url`` is Schema.org resource/landing page from the JSON-LD.
     ``source_url`` is the harvest page URL recorded by summoner on S3 metadata.
     """
+    if resolver:
+        node = resolver.expand_identifiers(node)
+
     name = _plain_string(node.get("name"))
     description = _plain_string(node.get("description"))
     keywords = _string_list(node.get("keywords"))
@@ -141,6 +151,7 @@ def documents_from_jsonld_bytes(
     s3_key: str,
     graph: str,
     source_url: str | None = None,
+    resolver: Optional[Resolver] = None,
 ) -> list[dict[str, Any]]:
     """Parse JSON-LD object or array into one or more ES documents."""
     if isinstance(body, bytes):
@@ -167,6 +178,16 @@ def documents_from_jsonld_bytes(
         logger.warning("Unexpected JSON root type in %s: %s", s3_key, type(data))
         return []
 
+    if resolver:
+        # Build local context: map @id to the node itself for all dicts in nodes
+        local_context = {}
+        for node in nodes:
+            if isinstance(node, dict) and "@id" in node:
+                iid = node["@id"]
+                if isinstance(iid, str):
+                    local_context[iid] = node
+        resolver.set_local_context(local_context)
+
     docs: list[dict[str, Any]] = []
     for i, node in enumerate(nodes):
         if not isinstance(node, dict):
@@ -179,6 +200,7 @@ def documents_from_jsonld_bytes(
                 graph=graph,
                 index_in_file=i,
                 source_url=source_url,
+                resolver=resolver,
             )
         )
     return docs

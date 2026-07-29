@@ -11,6 +11,7 @@ from .config import AppConfig, graph_iri, index_name
 from .elasticsearch_client import build_client, bulk_index, replace_index
 from .extract import documents_from_jsonld_bytes
 from .reader import build_minio_client, harvest_url_from_metadata, iter_jsonld_objects
+from .resolver import Resolver
 
 logger = logging.getLogger(__name__)
 
@@ -52,28 +53,34 @@ def run_load(
     s3 = build_minio_client(cfg.objectstore)
     bucket = cfg.objectstore.bucket
 
+    resolver = Resolver(cfg.triplestore.endpoint if cfg.triplestore else None)
+
     docs: list[dict] = []
-    for key, body, meta in iter_jsonld_objects(s3, bucket, source, limit=limit):
-        stats.objects_seen += 1
-        source_url = harvest_url_from_metadata(meta)
-        extracted = documents_from_jsonld_bytes(
-            body,
-            source=source,
-            s3_key=key,
-            graph=g_iri,
-            source_url=source_url,
-        )
-        if not extracted:
-            stats.errors += 1
-            logger.warning("No documents from %s", key)
-            continue
-        docs.extend(extracted)
-        logger.info(
-            "Extracted %d document(s) from %s (source_url=%s)",
-            len(extracted),
-            key,
-            source_url or "—",
-        )
+    try:
+        for key, body, meta in iter_jsonld_objects(s3, bucket, source, limit=limit):
+            stats.objects_seen += 1
+            source_url = harvest_url_from_metadata(meta)
+            extracted = documents_from_jsonld_bytes(
+                body,
+                source=source,
+                s3_key=key,
+                graph=g_iri,
+                source_url=source_url,
+                resolver=resolver,
+            )
+            if not extracted:
+                stats.errors += 1
+                logger.warning("No documents from %s", key)
+                continue
+            docs.extend(extracted)
+            logger.info(
+                "Extracted %d document(s) from %s (source_url=%s)",
+                len(extracted),
+                key,
+                source_url or "—",
+            )
+    finally:
+        resolver.close()
 
     stats.documents = len(docs)
 

@@ -6,3 +6,4 @@ minio>=7.2
 rdflib>=7.0
 elasticsearch>=8,<9
 pytest>=8.0
+respx>=0.23.0

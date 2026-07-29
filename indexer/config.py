@@ -36,9 +36,16 @@ class SearchConfig:
 
 
 @dataclass(frozen=True)
+class TriplestoreConfig:
+    type: str
+    endpoint: str
+
+
+@dataclass(frozen=True)
 class AppConfig:
     objectstore: ObjectStoreConfig
     search: SearchConfig
+    triplestore: TriplestoreConfig | None = None
 
 
 def index_name(source: str, prefix: str = "odis") -> str:
@@ -91,6 +98,14 @@ def _parse_search(raw: dict[str, Any]) -> SearchConfig:
     return SearchConfig(type=search_type, endpoint=endpoint, index_prefix=prefix)
 
 
+def _parse_triplestore(raw: dict[str, Any] | None) -> TriplestoreConfig | None:
+    if raw is None:
+        return None
+    ts_type = str(_require(raw, "type", "triplestore")).lower()
+    endpoint = str(_require(raw, "endpoint", "triplestore")).strip()
+    return TriplestoreConfig(type=ts_type, endpoint=endpoint)
+
+
 def load_config(path: str | Path) -> AppConfig:
     config_path = Path(path)
     if not config_path.is_file():
@@ -104,4 +119,5 @@ def load_config(path: str | Path) -> AppConfig:
 
     objectstore = _parse_objectstore(_require(data, "objectstore", "config"))
     search = _parse_search(_require(data, "search", "config"))
-    return AppConfig(objectstore=objectstore, search=search)
+    triplestore = _parse_triplestore(data.get("triplestore"))
+    return AppConfig(objectstore=objectstore, search=search, triplestore=triplestore)
