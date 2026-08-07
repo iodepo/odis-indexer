@@ -89,11 +89,12 @@ def main():
 
     output_data = {"sources": new_sources}
 
-    # Backup existing sources.yaml
+    # Backup existing sources.yaml - keep only the last one
     if os.path.exists(sources_path):
-        today = datetime.now().strftime("%Y%m%d")
-        backup_path = f"{sources_path}_{today}"
+        backup_path = f"{sources_path}_last"
         print(f"Backing up {sources_path} to {backup_path}...")
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
         os.rename(sources_path, backup_path)
 
     # Write new sources.yaml

@@ -153,43 +153,40 @@ def run_load(
 
 
 def update_odiscat_stats(client: Elasticsearch, stats: LoadStats) -> None:
-    """Update the odiscat index with stats from the latest indexer run."""
+    """Update the odiscat index with stats from the latest indexer run (full replacement)."""
     index_name = "odiscat"
     if not client.indices.exists(index=index_name):
         logger.warning("Index %s does not exist, skipping stats update", index_name)
         return
 
+    # Prepare document for full replacement
     doc = {
-        "doc": {
-            "last_indexed": datetime.utcnow().isoformat(),
-            "indexed_objects_seen": stats.objects_seen,
-            "indexed_count": stats.indexed,
-            "indexed_errors": stats.errors + len([m for m in stats.messages if "ID " in m]),
-            "indexed_error_messages": stats.messages,
-            # Reset summoner fields if no summoner stats provided, or they will be overwritten below
-            "summoner_pages_seen": 0,
-            "summoner_extracted": 0,
-            "summoner_stored": 0,
-            "summoner_errors": 0,
-            "summoner_messages": [],
-        }
+        "last_indexed": datetime.utcnow().isoformat(),
+        "indexed_objects_seen": stats.objects_seen,
+        "indexed_count": stats.indexed,
+        "indexed_errors": stats.errors + len([m for m in stats.messages if "ID " in m]),
+        "indexed_error_messages": stats.messages,
+        "summoner_pages_seen": 0,
+        "summoner_extracted": 0,
+        "summoner_stored": 0,
+        "summoner_errors": 0,
+        "summoner_messages": [],
     }
     
     # Merge summoner stats if present
     if stats.summoner_stats:
         s_stats = stats.summoner_stats
-        doc["doc"].update({
+        doc.update({
             "summoner_pages_seen": s_stats.get("pages_seen", 0),
             "summoner_extracted": s_stats.get("extracted", 0),
             "summoner_stored": s_stats.get("stored", 0),
             "summoner_errors": s_stats.get("errors", 0),
             "summoner_messages": s_stats.get("messages", []),
         })
-        # If there are summoner errors, make sure they are reflected or added to error count if needed
-        # For now we just add them as separate fields.
     
     try:
-        client.update(index=index_name, id=stats.source, body=doc, retry_on_conflict=3)
-        logger.info("Updated %s stats for source %s", index_name, stats.source)
+        # We use index() instead of update() to ensure old fields/logs are removed
+        client.index(index=index_name, id=stats.source, body=doc)
+        logger.info("Updated %s stats for source %s (replaced)", index_name, stats.source)
     except Exception as exc:
         logger.error("Failed to update %s for %s: %s", index_name, stats.source, exc)

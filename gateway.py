@@ -116,7 +116,7 @@ def main() -> int:
         print(f"{'='*60}")
         
         # Configure logging to file for this source
-        file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+        file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
         file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
         
         console_handler = logging.StreamHandler(sys.stdout)
