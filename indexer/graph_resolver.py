@@ -4,7 +4,13 @@ from elasticsearch import Elasticsearch, helpers
 
 logger = logging.getLogger(__name__)
 
-def resolve_links(client: Elasticsearch, index: str, source: str):
+def resolve_links(
+    client: Elasticsearch, 
+    index: str, 
+    source: str, 
+    error_limiter: Optional[Any] = None,
+    stats_messages: Optional[List[str]] = None
+):
     """
     Second pass to resolve @id links within the same index/source.
     It looks for fields that only have an @id and tries to find the full document
@@ -21,12 +27,19 @@ def resolve_links(client: Elasticsearch, index: str, source: str):
     }
     
     # Initialize scroll
-    resp = client.search(
-        index=index,
-        body=query,
-        scroll='2m',
-        size=100
-    )
+    try:
+        resp = client.search(
+            index=index,
+            body=query,
+            scroll='2m',
+            size=100
+        )
+    except Exception as exc:
+        msg = f"Graph resolution initial search failed: {exc}"
+        logger.error(msg)
+        if error_limiter is not None and stats_messages is not None:
+            error_limiter.add_error(msg, stats_messages)
+        return
 
     scroll_id = resp.get('_scroll_id')
     hits = resp.get('hits', {}).get('hits', [])
@@ -37,22 +50,33 @@ def resolve_links(client: Elasticsearch, index: str, source: str):
     lookup: Dict[str, Dict[str, Any]] = {}
     docs_to_process = []
 
-    while hits:
-        for hit in hits:
-            doc = hit['_source']
-            doc_id = hit['_id']
-            lookup[doc_id] = doc
-            # Also lookup by the 'id' field in jsonld if it differs from ES _id
-            jsonld_id = doc.get('jsonld', {}).get('@id')
-            if jsonld_id:
-                lookup[jsonld_id] = doc
-            docs_to_process.append(hit)
+    try:
+        while hits:
+            for hit in hits:
+                doc = hit['_source']
+                doc_id = hit['_id']
+                lookup[doc_id] = doc
+                # Also lookup by the 'id' field in jsonld if it differs from ES _id
+                jsonld_id = doc.get('jsonld', {}).get('@id')
+                if jsonld_id:
+                    lookup[jsonld_id] = doc
+                docs_to_process.append(hit)
 
-        resp = client.scroll(scroll_id=scroll_id, scroll='2m')
-        scroll_id = resp.get('_scroll_id')
-        hits = resp.get('hits', {}).get('hits', [])
-
-    client.clear_scroll(scroll_id=scroll_id)
+            resp = client.scroll(scroll_id=scroll_id, scroll='2m')
+            scroll_id = resp.get('_scroll_id')
+            hits = resp.get('hits', {}).get('hits', [])
+    except Exception as exc:
+        msg = f"Graph resolution scroll failed: {exc}"
+        logger.error(msg)
+        if error_limiter is not None and stats_messages is not None:
+            error_limiter.add_error(msg, stats_messages)
+        # We'll still try to process what we have so far
+    finally:
+        if scroll_id:
+            try:
+                client.clear_scroll(scroll_id=scroll_id)
+            except Exception:
+                pass
 
     updated_count = 0
     actions = []
@@ -91,9 +115,21 @@ def resolve_links(client: Elasticsearch, index: str, source: str):
             updated_count += 1
 
     if actions:
-        success, errors = helpers.bulk(client, actions, raise_on_error=False)
-        logger.info("Graph resolution complete: %d documents updated, %d successes, %d errors", 
-                    updated_count, success, len(errors) if isinstance(errors, list) else errors)
+        try:
+            success, errors = helpers.bulk(client, actions, raise_on_error=False)
+            logger.info("Graph resolution complete: %d documents updated, %d successes, %d errors", 
+                        updated_count, success, len(errors) if isinstance(errors, list) else errors)
+            if errors and isinstance(errors, list) and error_limiter is not None and stats_messages is not None:
+                for err in errors:
+                    op = next(iter(err.keys()))
+                    info = err[op]
+                    msg = f"Graph Resolve ID {info.get('_id')}: {info.get('error', {}).get('reason', 'unknown error')}"
+                    error_limiter.add_error(msg, stats_messages)
+        except Exception as exc:
+            msg = f"Graph resolution bulk update failed: {exc}"
+            logger.error(msg)
+            if error_limiter is not None and stats_messages is not None:
+                error_limiter.add_error(msg, stats_messages)
     else:
         logger.info("Graph resolution complete: no documents needed updates")
 

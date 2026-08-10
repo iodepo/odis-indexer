@@ -155,11 +155,11 @@ def run_load(
 
     # 4. Graph resolution (second pass)
     try:
-        resolve_links(es, idx, source)
+        resolve_links(es, idx, source, error_limiter=error_limiter, stats_messages=stats.messages)
     except Exception as exc:
         logger.error("Graph resolution failed for %s: %s", source, exc)
         stats.errors += 1
-        stats.messages.append(f"Graph resolution failed: {exc}")
+        error_limiter.add_error(f"Graph resolution failed: {exc}", stats.messages)
 
     update_odiscat_stats(es, stats)
 
@@ -169,8 +169,12 @@ def run_load(
 def update_odiscat_stats(client: Elasticsearch, stats: LoadStats) -> None:
     """Update the odiscat index with stats from the latest indexer run (full replacement)."""
     index_name = "odiscat"
-    if not client.indices.exists(index=index_name):
-        logger.warning("Index %s does not exist, skipping stats update", index_name)
+    try:
+        if not client.indices.exists(index=index_name):
+            logger.warning("Index %s does not exist, skipping stats update", index_name)
+            return
+    except Exception as exc:
+        logger.error("Failed to check for index %s: %s", index_name, exc)
         return
 
     # Prepare document for full replacement
@@ -203,4 +207,6 @@ def update_odiscat_stats(client: Elasticsearch, stats: LoadStats) -> None:
         client.index(index=index_name, id=stats.source, body=doc)
         logger.info("Updated %s stats for source %s (replaced)", index_name, stats.source)
     except Exception as exc:
-        logger.error("Failed to update %s for %s: %s", index_name, stats.source, exc)
+        msg = f"Failed to update {index_name} for {stats.source}: {exc}"
+        logger.error(msg)
+        # We don't have an error_limiter here easily, but we can at least log it consistently

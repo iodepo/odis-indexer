@@ -16,6 +16,8 @@ class ErrorLimiter:
             (re.compile(r"Could not parse sitemap.*", re.I), "Could not parse sitemap"),
             (re.compile(r"Failed to fetch sitemap.*", re.I), "Failed to fetch sitemap"),
             (re.compile(r"Sitemap recursion depth exceeded.*", re.I), "Sitemap recursion depth exceeded"),
+            (re.compile(r"Connection error caused by:.*Connection aborted.*", re.I), "Elasticsearch connection aborted"),
+            (re.compile(r"Node <.*> has failed for .* times in a row", re.I), "Elasticsearch node failure"),
         ]
 
     def _get_key(self, message: str) -> str:
