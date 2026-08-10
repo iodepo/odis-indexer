@@ -12,6 +12,7 @@ from .elasticsearch_client import build_client, bulk_index, replace_index
 from .extract import documents_from_jsonld_bytes
 from .reader import build_minio_client, harvest_url_from_metadata, iter_jsonld_objects
 from .errors import ErrorLimiter
+from .graph_resolver import resolve_links
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +152,14 @@ def run_load(
     # refresh for immediate searchability in demos
     es.indices.refresh(index=idx)
     logger.info("Indexed %s documents into %s", success, idx)
+
+    # 4. Graph resolution (second pass)
+    try:
+        resolve_links(es, idx, source)
+    except Exception as exc:
+        logger.error("Graph resolution failed for %s: %s", source, exc)
+        stats.errors += 1
+        stats.messages.append(f"Graph resolution failed: {exc}")
 
     update_odiscat_stats(es, stats)
 
