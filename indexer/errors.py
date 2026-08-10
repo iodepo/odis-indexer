@@ -9,15 +9,18 @@ class ErrorLimiter:
         self.counts: Dict[str, int] = {}
         self.patterns = [
             (re.compile(r"Client error '404 Not Found' for url.*", re.I), "Client error '404 Not Found'"),
-            (re.compile(r"timeout|timed out", re.I), "Connection timeout"),
+            (re.compile(r"timeout|timed out|putting on \d+ second timeout", re.I), "Connection timeout"),
             (re.compile(r"Invalid XML sitemap: not well-formed \(invalid token\):.*", re.I), "Invalid XML sitemap: not well-formed"),
             (re.compile(r"no application/ld\+json script tags found.*", re.I), "No JSON-LD script tags found"),
             (re.compile(r"JSON body does not look like JSON-LD.*", re.I), "JSON body does not look like JSON-LD"),
             (re.compile(r"Could not parse sitemap.*", re.I), "Could not parse sitemap"),
             (re.compile(r"Failed to fetch sitemap.*", re.I), "Failed to fetch sitemap"),
             (re.compile(r"Sitemap recursion depth exceeded.*", re.I), "Sitemap recursion depth exceeded"),
-            (re.compile(r"Connection error caused by:.*Connection aborted.*", re.I), "Elasticsearch connection aborted"),
+            (re.compile(r"Connection aborted|Connection error caused by:.*Connection aborted", re.I), "Elasticsearch connection aborted"),
+            (re.compile(r"RemoteDisconnected|Connection error caused by:.*RemoteDisconnected", re.I), "Elasticsearch remote disconnected"),
+            (re.compile(r"ProtocolError|Connection error caused by:.*ProtocolError", re.I), "Elasticsearch protocol error"),
             (re.compile(r"Node <.*> has failed for .* times in a row", re.I), "Elasticsearch node failure"),
+            (re.compile(r"Retrying request after failure \(attempt \d of \d\)", re.I), "Elasticsearch retry"),
         ]
 
     def _get_key(self, message: str) -> str:

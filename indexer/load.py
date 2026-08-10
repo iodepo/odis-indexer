@@ -95,7 +95,7 @@ def run_load(
                 logger.info("Loaded summoner stats for %s (0 objects)", source)
         except Exception as exc:
             logger.debug("No summoner stats found for %s (0 objects): %s", source, exc)
-        update_odiscat_stats(es, stats)
+        update_odiscat_stats(es, stats, error_limiter=error_limiter)
         return stats
 
     if dry_run:
@@ -126,7 +126,7 @@ def run_load(
                 logger.info("Loaded summoner stats for %s (no docs)", source)
         except Exception as exc:
             logger.debug("No summoner stats found for %s (no docs): %s", source, exc)
-        update_odiscat_stats(es, stats)
+        update_odiscat_stats(es, stats, error_limiter=error_limiter)
         return stats
 
     es = build_client(cfg.search.base_endpoint)
@@ -144,7 +144,7 @@ def run_load(
     # shallow copy docs so bulk can pop _id without mutating if re-run in process
     payload = [dict(d) for d in docs]
     replace_index(es, idx, source)
-    success, bulk_errors = bulk_index(es, idx, payload)
+    success, bulk_errors = bulk_index(es, idx, payload, log_errors=False)
     stats.indexed = success
     if bulk_errors:
         for err in bulk_errors:
@@ -161,12 +161,12 @@ def run_load(
         stats.errors += 1
         error_limiter.add_error(f"Graph resolution failed: {exc}", stats.messages)
 
-    update_odiscat_stats(es, stats)
+    update_odiscat_stats(es, stats, error_limiter=error_limiter)
 
     return stats
 
 
-def update_odiscat_stats(client: Elasticsearch, stats: LoadStats) -> None:
+def update_odiscat_stats(client: Elasticsearch, stats: LoadStats, error_limiter: ErrorLimiter | None = None) -> None:
     """Update the odiscat index with stats from the latest indexer run (full replacement)."""
     index_name = "odiscat"
     try:
@@ -174,7 +174,10 @@ def update_odiscat_stats(client: Elasticsearch, stats: LoadStats) -> None:
             logger.warning("Index %s does not exist, skipping stats update", index_name)
             return
     except Exception as exc:
-        logger.error("Failed to check for index %s: %s", index_name, exc)
+        msg = f"Failed to check for index {index_name}: {exc}"
+        logger.error(msg)
+        if error_limiter:
+            error_limiter.add_error(msg, stats.messages)
         return
 
     # Prepare document for full replacement
@@ -209,4 +212,5 @@ def update_odiscat_stats(client: Elasticsearch, stats: LoadStats) -> None:
     except Exception as exc:
         msg = f"Failed to update {index_name} for {stats.source}: {exc}"
         logger.error(msg)
-        # We don't have an error_limiter here easily, but we can at least log it consistently
+        if error_limiter:
+            error_limiter.add_error(msg, stats.messages)

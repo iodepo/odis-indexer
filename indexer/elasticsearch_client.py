@@ -70,8 +70,9 @@ def bulk_index(
     client: Elasticsearch,
     index: str,
     documents: Iterable[dict[str, Any]],
-) -> tuple[int, int]:
-    """Bulk index documents. Returns (success_count, error_count)."""
+    log_errors: bool = True,
+) -> tuple[int, list[str]]:
+    """Bulk index documents. Returns (success_count, error_list)."""
 
     def actions() -> Iterable[dict[str, Any]]:
         for doc in documents:
@@ -99,7 +100,7 @@ def bulk_index(
             info = err[op]
             msg = f"ID {info.get('_id')}: {info.get('error', {}).get('reason', 'unknown error')}"
             error_details.append(msg)
-            if len(error_details) <= 5:
+            if log_errors and len(error_details) <= 5:
                 logger.warning("Bulk error sample: %s", msg)
 
     logger.info("Bulk index %s: success=%s errors=%s", index, success, err_count)
