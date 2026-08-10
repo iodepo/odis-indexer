@@ -86,25 +86,24 @@ def resolve_links(
         original_jsonld = doc.get('jsonld', {})
         
         # Deep walk to find @id links
-        changed = _resolve_node(original_jsonld, lookup)
+        # We work on a deep copy to avoid mutating our lookup map 
+        # which would cause unexpected side effects or cycles during the pass.
+        import copy
+        jsonld_copy = copy.deepcopy(original_jsonld)
+        changed = _resolve_node(jsonld_copy, lookup)
         
         if changed:
-            # Re-extract searchable fields if needed? 
-            # For now, we primarily want to update the jsonld itself.
-            # But the facade might need updates too (e.g. if name was missing and now resolved)
-            # However, extract_document is usually called during load.
-            # We'll just update the ES document with the enriched jsonld.
-            
-            # TODO: Should we re-run extraction? 
-            # If the resolution added a name or description that was missing, yes.
+            # Re-run extraction with the enriched jsonld.
             from .extract import extract_document
             new_doc = extract_document(
-                original_jsonld,
+                jsonld_copy,
                 source=doc['source'],
                 s3_key=doc['s3_key'],
                 graph=doc['graph'],
                 source_url=doc.get('source_url')
             )
+            # Remove _id from the document body as it's a metadata field
+            new_doc.pop("_id", None)
             
             actions.append({
                 "_op_type": "update",
@@ -116,15 +115,24 @@ def resolve_links(
 
     if actions:
         try:
-            success, errors = helpers.bulk(client, actions, raise_on_error=False)
-            logger.info("Graph resolution complete: %d documents updated, %d successes, %d errors", 
-                        updated_count, success, len(errors) if isinstance(errors, list) else errors)
-            if errors and isinstance(errors, list) and error_limiter is not None and stats_messages is not None:
-                for err in errors:
-                    op = next(iter(err.keys()))
-                    info = err[op]
-                    msg = f"Graph Resolve ID {info.get('_id')}: {info.get('error', {}).get('reason', 'unknown error')}"
-                    error_limiter.add_error(msg, stats_messages)
+            # Chunk the bulk actions to avoid "Unable to serialize to JSON" or "Request size too large"
+            # though the former was likely due to recursion in the doc itself.
+            chunk_size = 50 
+            for i in range(0, len(actions), chunk_size):
+                chunk = actions[i : i + chunk_size]
+                success, errors = helpers.bulk(client, chunk, raise_on_error=False)
+                logger.info("Graph resolution chunk: %d successes, %d errors", 
+                            success, len(errors) if isinstance(errors, list) else errors)
+                
+                if errors and isinstance(errors, list):
+                    for err in errors:
+                        op = next(iter(err.keys()))
+                        info = err[op]
+                        if error_limiter is not None and stats_messages is not None:
+                            msg = f"Graph Resolve ID {info.get('_id')}: {info.get('error', {}).get('reason', 'unknown error')}"
+                            error_limiter.add_error(msg, stats_messages)
+                        else:
+                            logger.error(f"Bulk error for {info.get('_id')}: {info.get('error')}")
         except Exception as exc:
             msg = f"Graph resolution bulk update failed: {exc}"
             logger.error(msg)
@@ -133,42 +141,75 @@ def resolve_links(
     else:
         logger.info("Graph resolution complete: no documents needed updates")
 
-def _resolve_node(node: Any, lookup: Dict[str, Dict[str, Any]], depth: int = 0) -> bool:
+def _resolve_node(node: Any, lookup: Dict[str, Dict[str, Any]], depth: int = 0, visited_ids: Optional[set] = None) -> bool:
     """Recursively resolve @id links in a JSON-LD node. Returns True if any change was made."""
     if depth > 5: # Prevent infinite recursion
         return False
     
+    if visited_ids is None:
+        visited_ids = set()
+
     changed = False
     if isinstance(node, dict):
-        # Check if this node is just an @id link
-        if len(node) == 1 and "@id" in node:
+        # Check if this node contains an @id link and potentially other metadata
+        if "@id" in node:
             ref_id = node["@id"]
+            
+            # Cycle detection: if we've already resolved this ID in this path, stop
+            if ref_id in visited_ids:
+                return False
+            
             if ref_id in lookup:
                 ref_doc = lookup[ref_id]
                 ref_jsonld = ref_doc.get("jsonld", {})
-                # Merge info. We don't want to overwrite everything, 
-                # but we want to provide the substance.
-                for k, v in ref_jsonld.items():
-                    if k not in node:
-                        node[k] = v
+                
+                # Merge info. Only merge if we haven't already merged substantial info
+                substantial_keys = [k for k in node.keys() if k not in ("@id", "@type", "@context")]
+                if not substantial_keys:
+                    visited_ids.add(ref_id)
+                    for k, v in ref_jsonld.items():
+                        if k not in node:
+                            # Use a shallow copy for values to avoid simple shared mutation
+                            node[k] = v.copy() if isinstance(v, (dict, list)) else v
+                            changed = True
+                    
+                    # After merging, try to resolve newly added properties
+                    if _resolve_node(node, lookup, depth + 1, visited_ids):
                         changed = True
-                return changed
+                    
+                    visited_ids.remove(ref_id)
+                    return changed
 
         # Otherwise, recurse into all properties
         for k, v in list(node.items()):
-            if _resolve_node(v, lookup, depth + 1):
+            if k == "@context": # Skip context resolution to avoid bloat/recursion
+                continue
+            if _resolve_node(v, lookup, depth + 1, visited_ids):
                 changed = True
     elif isinstance(node, list):
         for i, item in enumerate(node):
             if isinstance(item, dict):
-                # Special case: if item is an @id link in a list
-                if len(item) == 1 and "@id" in item:
+                if "@id" in item:
                     ref_id = item["@id"]
+                    if ref_id in visited_ids:
+                        continue
+                        
                     if ref_id in lookup:
                         ref_doc = lookup[ref_id]
-                        node[i] = ref_doc.get("jsonld", {}).copy()
-                        changed = True
-                else:
-                    if _resolve_node(item, lookup, depth + 1):
-                        changed = True
+                        ref_jsonld = ref_doc.get("jsonld", {})
+                        
+                        substantial_keys = [k for k in item.keys() if k not in ("@id", "@type", "@context")]
+                        if not substantial_keys:
+                            visited_ids.add(ref_id)
+                            # Replace with a copy
+                            node[i] = ref_jsonld.copy()
+                            changed = True
+                            
+                            # Recurse into the newly placed object
+                            _resolve_node(node[i], lookup, depth + 1, visited_ids)
+                            visited_ids.remove(ref_id)
+                            continue
+
+                if _resolve_node(item, lookup, depth + 1, visited_ids):
+                    changed = True
     return changed
