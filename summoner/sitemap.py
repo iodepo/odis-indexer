@@ -8,6 +8,7 @@ from typing import Callable
 from urllib.parse import urljoin
 
 import httpx
+from indexer.errors import ErrorLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,7 @@ def collect_page_urls(
     depth: int = 0,
     limit: int | None = None,
     errors: list[str] | None = None,
+    error_limiter: ErrorLimiter | None = None,
 ) -> list[str]:
     """Recursively expand a sitemap or sitemap index into page URLs.
 
@@ -80,11 +82,14 @@ def collect_page_urls(
     if seen is None:
         seen = set()
 
+    if error_limiter is None and errors is not None:
+        error_limiter = ErrorLimiter()
+
     if depth > max_depth:
         msg = f"Sitemap recursion depth exceeded at {sitemap_url} (max={max_depth})"
         logger.warning(msg)
-        if errors is not None:
-            errors.append(msg)
+        if errors is not None and error_limiter is not None:
+            error_limiter.add_error(msg, errors)
         return []
 
     if sitemap_url in seen:
@@ -99,8 +104,8 @@ def collect_page_urls(
     except httpx.HTTPError as exc:
         msg = f"Failed to fetch sitemap {sitemap_url}: {exc}"
         logger.error(msg)
-        if errors is not None:
-            errors.append(msg)
+        if errors is not None and error_limiter is not None:
+            error_limiter.add_error(msg, errors)
         return []
 
     content_type = (response.headers.get("content-type") or "").lower()
@@ -111,8 +116,8 @@ def collect_page_urls(
     except ValueError as exc:
         msg = f"Could not parse sitemap {sitemap_url} ({content_type}): {exc}"
         logger.error(msg)
-        if errors is not None:
-            errors.append(msg)
+        if errors is not None and error_limiter is not None:
+            error_limiter.add_error(msg, errors)
         return []
 
     if kind == "urlset":
@@ -137,6 +142,7 @@ def collect_page_urls(
                 depth=depth + 1,
                 limit=remaining,
                 errors=errors,
+                error_limiter=error_limiter,
             )
         )
     return pages

@@ -11,6 +11,7 @@ from .config import AppConfig, graph_iri, index_name
 from .elasticsearch_client import build_client, bulk_index, replace_index
 from .extract import documents_from_jsonld_bytes
 from .reader import build_minio_client, harvest_url_from_metadata, iter_jsonld_objects
+from .errors import ErrorLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ def run_load(
     idx = index_name(source, cfg.search.index_prefix)
     g_iri = graph_iri(source)
     stats = LoadStats(source=source, index=idx, dry_run=dry_run)
+    error_limiter = ErrorLimiter()
 
     s3 = build_minio_client(cfg.objectstore)
     bucket = cfg.objectstore.bucket
@@ -65,7 +67,9 @@ def run_load(
         )
         if not extracted:
             stats.errors += 1
-            logger.warning("No documents from %s", key)
+            msg = f"No documents from {key}"
+            logger.warning(msg)
+            error_limiter.add_error(msg, stats.messages)
             continue
         docs.extend(extracted)
         logger.info(
@@ -142,7 +146,8 @@ def run_load(
     success, bulk_errors = bulk_index(es, idx, payload)
     stats.indexed = success
     if bulk_errors:
-        stats.messages.extend(bulk_errors)
+        for err in bulk_errors:
+            error_limiter.add_error(err, stats.messages)
     # refresh for immediate searchability in demos
     es.indices.refresh(index=idx)
     logger.info("Indexed %s documents into %s", success, idx)

@@ -19,6 +19,7 @@ from .robots import RobotsCache
 from .sitemap import collect_page_urls
 from .sitegraph import collect_sitegraph_items
 from .store import ObjectWriter, store_from_config
+from indexer.errors import ErrorLimiter
 
 if TYPE_CHECKING:
     pass
@@ -112,6 +113,7 @@ def _fetch_and_extract(
     headless: BrowserlessClient | None,
     stats: SourceStats,
     stats_lock: threading.Lock,
+    error_limiter: ErrorLimiter,
 ) -> ExtractResult | None:
     """Static and/or headless fetch, then extract JSON-LD.
 
@@ -153,14 +155,13 @@ def _fetch_and_extract(
                     stats.errors += 1
                     if static_result and static_result.error:
                         msg = f"{page_url}: {static_result.error}"
-                        if msg not in stats.messages:
-                            stats.messages.append(msg)
+                        error_limiter.add_error(msg, stats.messages)
                 return None
         elif not use_headless:
             with stats_lock:
                 stats.errors += 1
-                if static_fetch_error and f"{page_url}: {static_fetch_error}" not in stats.messages:
-                    stats.messages.append(f"{page_url}: {static_fetch_error}")
+                if static_fetch_error:
+                    error_limiter.add_error(f"{page_url}: {static_fetch_error}", stats.messages)
             return None
 
     # --- Headless path ---
@@ -177,8 +178,7 @@ def _fetch_and_extract(
             with stats_lock:
                 stats.headless_errors += 1
                 stats.errors += 1
-                if msg not in stats.messages:
-                    stats.messages.append(f"{page_url}: {msg}")
+                error_limiter.add_error(f"{page_url}: {msg}", stats.messages)
             return None
         result = extract_jsonld(page_url, html, "text/html")
         if result.ok:
@@ -195,8 +195,8 @@ def _fetch_and_extract(
         logger.error("No JSON-LD after headless render %s: %s", page_url, result.error)
         with stats_lock:
             stats.errors += 1
-            if result.error not in stats.messages:
-                stats.messages.append(f"{page_url}: {result.error}")
+            if result.error:
+                error_limiter.add_error(f"{page_url}: {result.error}", stats.messages)
         return None
 
     # Static-only miss
@@ -212,16 +212,13 @@ def _fetch_and_extract(
         stats.errors += 1
         if static_result and static_result.error:
             msg = f"{page_url}: {static_result.error}"
-            if msg not in stats.messages:
-                stats.messages.append(msg)
+            error_limiter.add_error(msg, stats.messages)
         elif static_fetch_error:
             msg = f"{page_url}: {static_fetch_error}"
-            if msg not in stats.messages:
-                stats.messages.append(msg)
+            error_limiter.add_error(msg, stats.messages)
         else:
              msg = f"{page_url}: unknown extraction error"
-             if msg not in stats.messages:
-                 stats.messages.append(msg)
+             error_limiter.add_error(msg, stats.messages)
     return None
 
 
@@ -236,6 +233,7 @@ def _process_page(
     stats: SourceStats,
     stats_lock: threading.Lock,
     headless: BrowserlessClient | None,
+    error_limiter: ErrorLimiter,
 ) -> None:
     if not robots.allowed(page_url):
         logger.info("Skipped by robots.txt: %s", page_url)
@@ -252,6 +250,7 @@ def _process_page(
         headless=headless,
         stats=stats,
         stats_lock=stats_lock,
+        error_limiter=error_limiter,
     )
     if result is None or not result.ok:
         return
@@ -283,6 +282,7 @@ def crawl_source(
 ) -> SourceStats:
     stats = SourceStats(sourceid=source.sourceid)
     stats_lock = threading.Lock()
+    error_limiter = ErrorLimiter()
 
     if source.headless and headless is None:
         msg = (
@@ -307,6 +307,8 @@ def crawl_source(
     stype = (source.sourcetype or "sitemap").lower()
     if stype == "sitegraph":
         items = collect_sitegraph_items(source.url, client, limit=limit, errors=stats.messages)
+        # Note: sitegraph collection might need its own limiter if it produces many errors, 
+        # but it's usually one file.
         if stats.messages and len(stats.messages) > 0:
              stats.errors += len(stats.messages)
         stats.pages_seen = 1  # The sitegraph file itself
@@ -324,13 +326,14 @@ def crawl_source(
                 msg = f"Store failed for sitegraph item from {source.url}: {exc}"
                 logger.error(msg)
                 stats.errors += 1
-                if msg not in stats.messages:
-                    stats.messages.append(msg)
+                error_limiter.add_error(msg, stats.messages)
         logger.info(stats.summary())
         _save_stats(store, source.sourceid, stats)
         return stats
 
-    page_urls = collect_page_urls(source.url, client, limit=limit, errors=stats.messages)
+    page_urls = collect_page_urls(
+        source.url, client, limit=limit, errors=stats.messages, error_limiter=error_limiter
+    )
     if not page_urls and stats.messages:
          stats.errors += len(stats.messages)
     # de-dupe preserving order
@@ -379,6 +382,7 @@ def crawl_source(
                 stats,
                 stats_lock,
                 headless,
+                error_limiter,
             )
             for page_url in unique_pages
         ]

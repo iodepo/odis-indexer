@@ -8,6 +8,7 @@ import httpx
 from summoner.config import AppConfig, ObjectStoreConfig, SourceConfig, SummonerConfig
 from summoner.crawl import SourceStats, _fetch_and_extract
 from summoner.store import DryRunStore
+from indexer.errors import ErrorLimiter
 
 
 def _app(hybrid: bool = True, headless_url: str = "http://localhost:3000") -> AppConfig:
@@ -56,6 +57,7 @@ def test_static_only_success() -> None:
         headless=None,
         stats=stats,
         stats_lock=__import__("threading").Lock(),
+        error_limiter=ErrorLimiter(),
     )
     assert result is not None and result.ok
     assert stats.static_ok == 1
@@ -88,6 +90,7 @@ def test_hybrid_fallback_to_headless() -> None:
         headless=headless,
         stats=stats,
         stats_lock=__import__("threading").Lock(),
+        error_limiter=ErrorLimiter(),
     )
     assert result is not None and result.ok
     assert stats.hybrid_fallback == 1
@@ -119,6 +122,7 @@ def test_headless_only_when_hybrid_false() -> None:
         headless=headless,
         stats=stats,
         stats_lock=__import__("threading").Lock(),
+        error_limiter=ErrorLimiter(),
     )
     assert result is not None and result.ok
     assert stats.static_ok == 0
@@ -153,6 +157,7 @@ def test_fetch_error_reporting() -> None:
         headless=None,
         stats=stats,
         stats_lock=__import__("threading").Lock(),
+        error_limiter=ErrorLimiter(),
     )
     
     assert result is None
@@ -178,6 +183,7 @@ def test_404_reporting() -> None:
         headless=None,
         stats=stats,
         stats_lock=__import__("threading").Lock(),
+        error_limiter=ErrorLimiter(),
     )
     
     assert result is None
@@ -203,6 +209,7 @@ def test_403_reporting() -> None:
         headless=None,
         stats=stats,
         stats_lock=__import__("threading").Lock(),
+        error_limiter=ErrorLimiter(),
     )
     
     assert result is None
@@ -258,6 +265,7 @@ def test_headless_timeout_reporting() -> None:
         headless=headless,
         stats=stats,
         stats_lock=__import__("threading").Lock(),
+        error_limiter=ErrorLimiter(),
     )
     
     assert result is None
