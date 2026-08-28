@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 import logging
-import xml.etree.ElementTree as ET
+try:
+    import xml.etree.ElementTree as ET
+    ET.fromstring("<test/>")
+    ParseError = ET.ParseError
+except Exception:
+    import lxml.etree as ET
+    ParseError = (ET.XMLSyntaxError, ET.LxmlError)
 from typing import Callable
 from urllib.parse import urljoin
 
@@ -35,12 +41,12 @@ def parse_sitemap_xml(content: str | bytes, base_url: str = "") -> tuple[str, li
     Returns:
         (kind, urls) where kind is 'urlset' or 'sitemapindex'.
     """
-    if isinstance(content, bytes):
-        content = content.decode("utf-8", errors="replace")
+    if isinstance(content, str):
+        content = content.encode("utf-8")
 
     try:
         root = ET.fromstring(content)
-    except ET.ParseError as exc:
+    except ParseError as exc:
         raise ValueError(f"Invalid XML sitemap: {exc}") from exc
 
     kind = _local_name(root.tag)

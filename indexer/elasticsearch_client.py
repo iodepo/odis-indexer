@@ -105,3 +105,47 @@ def bulk_index(
 
     logger.info("Bulk index %s: success=%s errors=%s", index, success, err_count)
     return int(success), error_details
+
+
+def bulk_update(
+    client: Elasticsearch,
+    index: str,
+    documents: Iterable[dict[str, Any]],
+    doc_as_upsert: bool = True,
+    log_errors: bool = True,
+) -> tuple[int, list[str]]:
+    """Bulk update documents. Returns (success_count, error_list)."""
+
+    def actions() -> Iterable[dict[str, Any]]:
+        for doc in documents:
+            doc_copy = dict(doc)
+            doc_id = doc_copy.pop("_id", None)
+            action: dict[str, Any] = {
+                "_op_type": "update",
+                "_index": index,
+                "doc": doc_copy,
+                "doc_as_upsert": doc_as_upsert,
+            }
+            if doc_id:
+                action["_id"] = doc_id
+            yield action
+
+    success, errors = helpers.bulk(
+        client,
+        actions(),
+        raise_on_error=False,
+        raise_on_exception=False,
+    )
+    err_count = len(errors) if isinstance(errors, list) else int(errors or 0)
+    error_details = []
+    if err_count and isinstance(errors, list):
+        for err in errors:
+            op = next(iter(err.keys()))
+            info = err[op]
+            msg = f"ID {info.get('_id')}: {info.get('error', {}).get('reason', 'unknown error')}"
+            error_details.append(msg)
+            if log_errors and len(error_details) <= 5:
+                logger.warning("Bulk error sample: %s", msg)
+
+    logger.info("Bulk update %s: success=%s errors=%s", index, success, err_count)
+    return int(success), error_details

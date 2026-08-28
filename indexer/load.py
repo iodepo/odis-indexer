@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
+from typing import Any
 
 from datetime import datetime
 from .config import AppConfig, graph_iri, index_name
@@ -167,7 +168,7 @@ def run_load(
 
 
 def update_odiscat_stats(client: Elasticsearch, stats: LoadStats, error_limiter: ErrorLimiter | None = None) -> None:
-    """Update the odiscat index with stats from the latest indexer run (full replacement)."""
+    """Update the odiscat index with stats from the latest indexer run (partial update)."""
     index_name = "odiscat"
     try:
         if not client.indices.exists(index=index_name):
@@ -180,20 +181,15 @@ def update_odiscat_stats(client: Elasticsearch, stats: LoadStats, error_limiter:
             error_limiter.add_error(msg, stats.messages)
         return
 
-    # Prepare document for full replacement
-    doc = {
+    # Prepare document for partial update with indexer stats
+    doc: dict[str, Any] = {
         "last_indexed": datetime.utcnow().isoformat(),
         "indexed_objects_seen": stats.objects_seen,
         "indexed_count": stats.indexed,
         "indexed_errors": stats.errors + len([m for m in stats.messages if "ID " in m]),
         "indexed_error_messages": stats.messages,
-        "summoner_pages_seen": 0,
-        "summoner_extracted": 0,
-        "summoner_stored": 0,
-        "summoner_errors": 0,
-        "summoner_messages": [],
     }
-    
+
     # Merge summoner stats if present
     if stats.summoner_stats:
         s_stats = stats.summoner_stats
@@ -204,11 +200,10 @@ def update_odiscat_stats(client: Elasticsearch, stats: LoadStats, error_limiter:
             "summoner_errors": s_stats.get("errors", 0),
             "summoner_messages": s_stats.get("messages", []),
         })
-    
+
     try:
-        # We use index() instead of update() to ensure old fields/logs are removed
-        client.index(index=index_name, id=stats.source, body=doc)
-        logger.info("Updated %s stats for source %s (replaced)", index_name, stats.source)
+        client.update(index=index_name, id=stats.source, doc=doc, doc_as_upsert=True)
+        logger.info("Updated %s stats for source %s", index_name, stats.source)
     except Exception as exc:
         msg = f"Failed to update {index_name} for {stats.source}: {exc}"
         logger.error(msg)

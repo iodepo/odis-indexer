@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 import re
 from indexer.config import load_config
-from indexer.elasticsearch_client import build_client, bulk_index
+from indexer.elasticsearch_client import build_client, bulk_update
 
 def slugify(text):
     text = text.lower()
@@ -30,7 +30,7 @@ def index_to_es(sources, config_path):
             doc["_id"] = s["sourceid"]
             documents.append(doc)
         
-        success, bulk_errors = bulk_index(client, index_name, documents)
+        success, bulk_errors = bulk_update(client, index_name, documents, doc_as_upsert=True)
         print(f"ES Indexing complete: {success} successes, {len(bulk_errors)} errors")
     except Exception as e:
         print(f"Error indexing to ES: {e}")
