@@ -78,3 +78,121 @@ def test_direct_jsonld_fixture(read_fixture) -> None:
     )
     assert len(docs) == 1
     assert docs[0]["name"] == "Direct JSON-LD"
+
+
+def test_extract_ioos_prefixed_fields() -> None:
+    node = {
+        "@context": {
+            "@vocab": "https://schema.org/",
+            "schema": "https://schema.org/",
+        },
+        "@type": "schema:Dataset",
+        "@id": "https://ioos.noaa.gov/dataset/waves-1",
+        "schema:name": "IOOS Wave Height Observation",
+        "schema:description": "Real-time wave observations across coastal US",
+        "schema:keywords": ["waves", "buoy", "height"],
+        "schema:url": "https://ioos.noaa.gov/waves-1",
+    }
+    doc = extract_document(
+        node,
+        source="ioos",
+        s3_key="summoned/ioos/123.json",
+        graph="urn:odis:ioos",
+        source_url="https://ioos.noaa.gov/harvest/page",
+    )
+    assert doc["name"] == "IOOS Wave Height Observation"
+    assert doc["description"] == "Real-time wave observations across coastal US"
+    assert doc["keywords"] == ["waves", "buoy", "height"]
+    assert doc["url"] == "https://ioos.noaa.gov/waves-1"
+    assert doc["type"] == ["Dataset"]
+    assert doc["id"] == "https://ioos.noaa.gov/dataset/waves-1"
+
+
+def test_extract_custom_context_mapping() -> None:
+    node = {
+        "@context": {
+            "schema": "https://schema.org/",
+            "title": "schema:name",
+            "abstract": "schema:description",
+            "link": "schema:url",
+            "tags": "schema:keywords",
+        },
+        "@type": "schema:Dataset",
+        "title": "Mapped Dataset",
+        "abstract": "Mapped Description",
+        "link": "https://example.org/dataset",
+        "tags": ["ocean", "sensors"],
+    }
+    doc = extract_document(
+        node,
+        source="custom",
+        s3_key="summoned/custom/1.json",
+        graph="urn:odis:custom",
+    )
+    assert doc["name"] == "Mapped Dataset"
+    assert doc["description"] == "Mapped Description"
+    assert doc["url"] == "https://example.org/dataset"
+    assert doc["keywords"] == ["ocean", "sensors"]
+
+
+def test_extract_top_level_context_with_graph() -> None:
+    body = json.dumps(
+        {
+            "@context": {
+                "schema": "https://schema.org/",
+            },
+            "@graph": [
+                {
+                    "@id": "https://example.org/item1",
+                    "@type": "schema:Dataset",
+                    "schema:name": "Item 1",
+                    "schema:description": "Description 1",
+                    "schema:url": "https://example.org/item1",
+                },
+                {
+                    "@id": "https://example.org/item2",
+                    "@type": "schema:Dataset",
+                    "schema:name": "Item 2",
+                    "schema:description": "Description 2",
+                    "schema:url": "https://example.org/item2",
+                },
+            ],
+        }
+    )
+    docs = documents_from_jsonld_bytes(
+        body,
+        source="ioos",
+        s3_key="summoned/ioos/graph.json",
+        graph="urn:odis:ioos",
+    )
+    assert len(docs) == 2
+    assert docs[0]["name"] == "Item 1"
+    assert docs[0]["description"] == "Description 1"
+    assert docs[0]["url"] == "https://example.org/item1"
+    assert docs[0]["type"] == ["Dataset"]
+    assert docs[1]["name"] == "Item 2"
+
+
+def test_extract_nested_prefixed_defined_term() -> None:
+    node = {
+        "@context": {
+            "schema": "https://schema.org/",
+        },
+        "@type": "schema:Dataset",
+        "schema:name": "Dataset with DefinedTerm",
+        "schema:keywords": [
+            {
+                "@type": "schema:DefinedTerm",
+                "schema:name": "Salinity",
+                "schema:termCode": "SAL01",
+            }
+        ],
+    }
+    doc = extract_document(
+        node,
+        source="test",
+        s3_key="summoned/test/1.json",
+        graph="urn:odis:test",
+    )
+    assert doc["name"] == "Dataset with DefinedTerm"
+    assert "Salinity" in doc["keywords"]
