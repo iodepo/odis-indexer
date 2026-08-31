@@ -4,6 +4,22 @@ Quickstart guide to get the full pipeline running: **summon → S3 → Oxigraph 
 
 Assumes Docker (or compatible compose), Python ≥ 3.11, and network access to a sitemap source.
 
+**WARNING** as we may need a lot of space for the Docker images and data, you may want to tell Docker and containerd to use a separate partition on a server!
+Edit `/etc/docker/daemon.json` and add the following:
+
+```json
+{
+  "data-root": "/data/docker"
+}
+```
+Edit `/etc/containerd/config.toml` and add the following:
+
+```toml
+[storage]
+  root = "/data/containerd"
+```
+
+
 ## get the source
 
 you may want to install this in a separate partition on a server
@@ -46,7 +62,11 @@ All Docker compose files can be found under **`/build`**.
 ### Elasticsearch
 ```bash
 docker compose -f build/docker-compose.es.yaml up -d
-curl -s http://127.0.0.1:9200   # expect cluster JSON
+```
+
+wait 30 sec (time for ES to startup)
+```bash
+curl -s http://127.0.0.1:9200   # expect JSON with cluster info
 ```
 
 CORS is enabled for the browser UI.
@@ -55,7 +75,7 @@ CORS is enabled for the browser UI.
 
 ```bash
 docker compose -f build/docker-compose.oxigraph.yaml up -d
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:7878/  # expect 200
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:7878/  # expect '200'df 
 ```
 
 ### Browserless (optional headless summoner)
