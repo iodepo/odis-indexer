@@ -34,15 +34,15 @@ Sitemap / pages
 
 - Python ≥ 3.11
 - Docker (compose files under `build/` for S3 store, Oxigraph, ES, Browserless)
-- S3-compatible store (LocalStack, MinIO, AWS, …) — default config: `localhost:4566`, bucket `odis` (`build/docker-compose.floci.yaml`)
-- Oxigraph for `scribe` / `visualizer` — default `http://localhost:7878` (`build/docker-compose.oxigraph.yaml`)
-- Elasticsearch 8 for `indexer` / Search UI — default `http://localhost:9200` (`build/docker-compose.es.yaml`)
-- Browserless (optional) for headless sources — default `http://localhost:3000` (`build/docker-compose.browserless.yaml`)
+- S3-compatible store (LocalStack, MinIO, AWS, …) — default config: `127.0.0.1:4566`, bucket `odis` (`build/docker-compose.floci.yaml`)
+- Oxigraph for `scribe` / `visualizer` — default `http://127.0.0.1:7878` (`build/docker-compose.oxigraph.yaml`)
+- Elasticsearch 8 for `indexer` / Search UI — default `http://127.0.0.1:9200` (`build/docker-compose.es.yaml`)
+- Browserless (optional) for headless sources — default `http://127.0.0.1:3000` (`build/docker-compose.browserless.yaml`)
 
 ## Install
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp config.yaml_example config.yaml
@@ -65,7 +65,7 @@ cp config.yaml_example config.yaml
 Sitemap sources are defined in `sources.yaml`. You can generate this file automatically from the [ODIS catalogue](https://catalogue.odis.org/):
 
 ```bash
-python make_sources.py
+python3 make_sources.py
 ```
 
 Each source in `sources.yaml` defines:
@@ -103,7 +103,7 @@ UI links prefer Schema.org **`url`**, then harvest **`source_url`**, then `@id` 
 Generates an interactive HTML graph visualization from Oxigraph data.
 
 ```bash
-python visualizer/visualize.py --source medin
+python3 visualizer/visualize.py --source medin
 # Generates visualizer/oxigraph_graph.html
 ```
 
@@ -126,7 +126,7 @@ Run the entire pipeline for all sources in parallel. Concurrency is limited by `
 
 ```bash
 # Process all active sources in parallel
-python manager.py --limit 5
+python3 manager.py --limit 5
 ```
 
 This command should be run from the crontab once a day.
@@ -140,10 +140,10 @@ Enter this in crontab, adjust the path to your path.
 
 ```bash
 # Process a single source
-python gateway.py --source medin
+python3 gateway.py --source medin
 
 # Process ALL active sources sequentially
-python gateway.py --source all
+python3 gateway.py --source all
 ```
 
 | Flag | Meaning |
@@ -171,12 +171,12 @@ Sitemap walk + JSON-LD extraction → S3.
 docker compose -f build/docker-compose.browserless.yaml up -d
 # TOKEN defaults to odis-local-token (must match summoner.headless_token)
 curl -s -o /dev/null -w "%{http_code}\n" \
-  "http://localhost:3000/active?token=odis-local-token"
+  "http://127.0.0.1:3000/active?token=odis-local-token"
 ```
 
 | Config key | Meaning |
 |------------|---------|
-| `summoner.headless` | Browserless base URL, e.g. `http://localhost:3000` |
+| `summoner.headless` | Browserless base URL, e.g. `http://127.0.0.1:3000` |
 | `summoner.headless_token` | API token (`BROWSERLESS_TOKEN` env also works) |
 | `summoner.headless_concurrent` | Client-side max concurrent browser renders |
 | `summoner.headless_hybrid` | Static first, then Browserless if needed |
@@ -186,9 +186,9 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 Headless only helps when JS actually injects JSON-LD into the DOM.
 
 ```bash
-python -m summoner --config config.yaml
-python -m summoner --config config.yaml --source medin --limit 5
-python -m summoner --config config.yaml --source medin --limit 5 --dry-run -v
+python3 -m summoner --config config.yaml
+python3 -m summoner --config config.yaml --source medin --limit 5
+python3 -m summoner --config config.yaml --source medin --limit 5 --dry-run -v
 ```
 
 | Flag | Meaning |
@@ -221,8 +221,8 @@ Per summoned object, provenance includes roughly:
 - load `prov:Activity` + agent `urn:odis:agent:scribe`
 
 ```bash
-python -m scribe --config config.yaml --source medin
-python -m scribe --config config.yaml --source medin --limit 10 --dry-run -v
+python3 -m scribe --config config.yaml --source medin
+python3 -m scribe --config config.yaml --source medin --limit 10 --dry-run -v
 ```
 
 | Flag | Meaning |
@@ -250,7 +250,7 @@ SELECT ?harvest ?s3key ?entity WHERE {
 Verify with SPARQL:
 
 ```bash
-curl -s -X POST http://localhost:7878/query \
+curl -s -X POST http://127.0.0.1:7878/query \
   -H 'Accept: application/sparql-results+json' \
   -H 'Content-Type: application/sparql-query' \
   --data 'SELECT (COUNT(*) AS ?c) WHERE { GRAPH <urn:odis:medin> { ?s ?p ?o } }'
@@ -268,7 +268,7 @@ Documents include a **search facade** (`name`, `description`, `keywords`, `type`
 
 ```bash
 docker compose -f build/docker-compose.es.yaml up -d
-curl -s http://localhost:9200
+curl -s http://127.0.0.1:9200
 ```
 
 Security is off and CORS is on for local demos only (see compose file).
@@ -276,8 +276,8 @@ Security is off and CORS is on for local demos only (see compose file).
 ### Run
 
 ```bash
-python -m indexer --config config.yaml --source medin
-python -m indexer --config config.yaml --source medin --limit 5 --dry-run -v
+python3 -m indexer --config config.yaml --source medin
+python3 -m indexer --config config.yaml --source medin --limit 5 --dry-run -v
 ```
 
 | Flag | Meaning |
@@ -290,8 +290,8 @@ python -m indexer --config config.yaml --source medin --limit 5 --dry-run -v
 ### Search examples
 
 ```bash
-curl -s 'http://localhost:9200/odis/_count'
-curl -s 'http://localhost:9200/odis/_search' \
+curl -s 'http://127.0.0.1:9200/odis/_count'
+curl -s 'http://127.0.0.1:9200/odis/_search' \
   -H 'Content-Type: application/json' \
   -d '{"query":{"multi_match":{"query":"coastal","fields":["name","description","keywords"]}},"_source":["name","url","source_url"]}'
 ```
@@ -311,8 +311,8 @@ The UI has been updated with:
 ```bash
 # after indexer has loaded a source
 cd visualizer/ui
-python -m http.server 8080
-# open http://localhost:8080
+python3 -m http.server 8080
+# open http://127.0.0.1:8080
 ```
 
 See [visualizer/ui/README.md](./visualizer/ui/README.md) for UI-specific notes and provenance detail.
