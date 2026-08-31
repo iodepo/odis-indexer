@@ -94,7 +94,7 @@ Match `summoner.headless` / `headless_token` in `config.yaml` to the compose ser
 
 ```bash
 docker compose -f build/docker-compose.floci.yaml up -d
-python - <<'PY'
+python3 - <<'PY'
 from minio import Minio
 c = Minio("127.0.0.1:4566", access_key="test", secret_key="test", secure=False)
 print("buckets:", [b.name for b in c.list_buckets()])
@@ -108,7 +108,7 @@ on first install expect [] as result, once you have run the summoner there shoul
 make the sources file using info from https://catalogue.odis.org/
 
 ```bash
-python make_sources.py
+python3 make_sources.py
 ```
 ## Harvest and Load (The easy way)
 
@@ -117,7 +117,7 @@ The number of parallel processes is controlled by the `manager.max_parallel_proc
 
 ```bash
 # Process all sources in parallel
-python manager.py --limit 5
+python3 manager.py --limit 5
 ```
 
 You should add this to the crontab, see the README file for example.
@@ -126,10 +126,10 @@ Alternatively, you can run the pipeline for one or all sources (sequentially) us
 
 ```bash
 # Process all sources sequentially
-python gateway.py --source all --limit 5
+python3 gateway.py --source all --limit 5
 
 # Process a single source
-python gateway.py --source [SOURCE] --limit 5
+python3 gateway.py --source [SOURCE] --limit 5
 ```
 
 This executes **summoner**, **scribe**, and **indexer** in sequence for each source.
@@ -142,10 +142,10 @@ look in sources.yaml for a source ID and replace [SOURCE] by this name
 
 ```bash
 # dry-run only (no S3 write)
-python -m summoner --config config.yaml --source [SOURCE] --limit 5 --dry-run -v
+python3 -m summoner --config config.yaml --source [SOURCE] --limit 5 --dry-run -v
 
 # small real run (writes to S3)
-python -m summoner --config config.yaml --source [SOURCE] --limit 5
+python3 -m summoner --config config.yaml --source [SOURCE] --limit 5
 
 ```
 
@@ -162,7 +162,7 @@ Metadata on each object includes harvest page URL (`source-url`).
 look in sources.yaml for a source ID and replace [SOURCE] by this name
 
 ```bash
-python -m scribe --config config.yaml --source [SOURCE]
+python3 -m scribe --config config.yaml --source [SOURCE]
 ```
 
 Named graphs:
@@ -191,7 +191,7 @@ curl -s -X POST http://127.0.0.1:7878/query \
 ## Load search (indexer → Elasticsearch)
 
 ```bash
-python -m indexer --config config.yaml --source [SOURCE]
+python3 -m indexer --config config.yaml --source [SOURCE]
 ```
 
 Index: `odis`
@@ -207,9 +207,13 @@ curl -s 'http://127.0.0.1:9200/odis/_search' \
 
 ## Search UI
 
+there is a basic search UI built in the code, but you should build out your own, using the Elasticsearch API.
+Alternatively there is a search UI built by IODE that can be found at https://github.com/iobis/odis-ui.
+
+
 ```bash
 cd ui
-python -m http.server 8080
+python3 -m http.server 8080
 ```
 
 Open **http://127.0.0.1:8080** and search (e.g. `topographic` or `coastal`).
@@ -226,11 +230,11 @@ docker compose -f build/docker-compose.oxigraph.yaml up -d
 docker compose -f build/docker-compose.floci.yaml up -d
 docker compose -f build/docker-compose.browserless.yaml up -d
 
-python -m summoner --config config.yaml --source [SOURCE] --limit 5
-python -m scribe   --config config.yaml --source [SOURCE]
-python -m indexer  --config config.yaml --source [SOURCE]
+python3 -m summoner --config config.yaml --source [SOURCE] --limit 5
+python3 -m scribe   --config config.yaml --source [SOURCE]
+python3 -m indexer  --config config.yaml --source [SOURCE]
 
-cd ui && python -m http.server 8080
+cd ui && python3 -m http.server 8080
 ```
 
 ## Troubleshooting
