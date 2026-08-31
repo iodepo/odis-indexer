@@ -11,7 +11,7 @@ def test_load_config(fixtures_dir: Path) -> None:
     cfg = load_config(fixtures_dir / "indexer_config.yaml")
     assert cfg.objectstore.bucket == "iode"
     assert cfg.search.type == "elasticsearch"
-    assert cfg.search.base_endpoint == "http://localhost:9400"
+    assert cfg.search.base_endpoint == "http://localhost:9200"
     assert cfg.search.index_prefix == "odis"
 
 

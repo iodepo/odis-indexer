@@ -2,7 +2,7 @@
   "use strict";
 
   const cfg = window.ODIS_UI_CONFIG || {};
-  const esBase = (cfg.elasticsearch || "http://odis.org:9400").replace(/\/$/, "");
+  const esBase = (cfg.elasticsearch || "http://es.odis.org:9200").replace(/\/$/, "");
   const indexPattern = cfg.indexPattern || "odis-*";
   const size = cfg.size || 20;
 

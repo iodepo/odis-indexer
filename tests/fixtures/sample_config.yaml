@@ -12,7 +12,7 @@ triplestore:
     endpoint: http://localhost:7878
 search:
     type: elasticsearch
-    endpoint: http://localhost:9400
+    endpoint: http://localhost:9200
     index_prefix: odis
 summoner:
     # Browserless base URL (docker compose -f build/docker-compose.browserless.yaml up -d)

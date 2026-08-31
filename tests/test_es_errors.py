@@ -7,7 +7,7 @@ def test_es_error_patterns():
     
     # Test cases based on the issue description
     errors = [
-        "WARNING elastic_transport.node_pool: Node <Urllib3HttpNode(http://localhost:9400)> has failed for 1 times in a row, putting on 1 second timeout",
+        "WARNING elastic_transport.node_pool: Node <Urllib3HttpNode(http://localhost:9200)> has failed for 1 times in a row, putting on 1 second timeout",
         "WARNING elastic_transport.transport: Retrying request after failure (attempt 0 of 3)",
         "http.client.RemoteDisconnected: Remote end closed connection without response",
         "urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",

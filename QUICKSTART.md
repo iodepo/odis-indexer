@@ -17,7 +17,7 @@ cd odis-indexer
 ## Python env
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
@@ -26,7 +26,7 @@ pip install -r requirements.txt
 
 You need three backends. 
 
-All config for the dockers are to be found in config.yaml_example. 
+All config files for the dockers are to be found in config.yaml_example. 
 
 ```bash
 cp config.yaml_example config.yaml
@@ -38,7 +38,7 @@ Adjust `config.yaml` if your hosts/ports differ.
 |---------|-------------------------------------------------------------------|---------|
 | S3-compatible store | `http://localhost:4566` (HTTP, keys `test`/`test`, bucket `odis`) | JSON-LD objects |
 | Oxigraph | `http://localhost:7878`                                           | Named-graph RDF |
-| Elasticsearch 8 | `http://localhost:9400`                                           | Text search + UI |
+| Elasticsearch 8 | `http://localhost:9200`                                           | Text search + UI |
 | Browserless (optional) | `http://localhost:3000`                                           | JS-rendered HTML for headless sources |
 
 Compose files live under **`build/`**. 
@@ -47,7 +47,7 @@ Compose files live under **`build/`**.
 
 ```bash
 docker compose -f build/docker-compose.es.yaml up -d
-curl -s http://localhost:9400   # expect cluster JSON
+curl -s http://localhost:9200   # expect cluster JSON
 ```
 
 CORS is enabled for the browser UI.
@@ -180,8 +180,8 @@ Index: `odis`
 Check:
 
 ```bash
-curl -s 'http://localhost:9400/odis/_count'
-curl -s 'http://localhost:9400/odis/_search' \
+curl -s 'http://localhost:9200/odis/_count'
+curl -s 'http://localhost:9200/odis/_search' \
   -H 'Content-Type: application/json' \
   -d '{"query":{"multi_match":{"query":"topographic","fields":["name","description","keywords"]}},"_source":["name","url","source_url"]}'
 ```
@@ -195,7 +195,7 @@ python -m http.server 8080
 
 Open **http://localhost:8080** and search (e.g. `topographic` or `coastal`).
 
-Edit `ui/config.js` if Elasticsearch is not at `http://localhost:9400`.
+Edit `ui/config.js` if Elasticsearch is not at `http://localhost:9200`.
 
 ## One-shot cheat sheet
 
