@@ -33,10 +33,11 @@ Sitemap / pages
 ## Requirements
 
 - Python ≥ 3.11
-- Docker (compose files under `build/` for ES, Oxigraph, Browserless; S3 usually LocalStack/MinIO)
-- S3-compatible store (LocalStack, MinIO, AWS, …) — default config: `localhost:4566`, bucket `iode`
+- Docker (compose files under `build/` for S3 store, Oxigraph, ES, Browserless)
+- S3-compatible store (LocalStack, MinIO, AWS, …) — default config: `localhost:4566`, bucket `odis` (`build/docker-compose.floci.yaml`)
 - Oxigraph for `scribe` / `visualizer` — default `http://localhost:7878` (`build/docker-compose.oxigraph.yaml`)
 - Elasticsearch 8 for `indexer` / Search UI — default `http://localhost:9200` (`build/docker-compose.es.yaml`)
+- Browserless (optional) for headless sources — default `http://localhost:3000` (`build/docker-compose.browserless.yaml`)
 
 ## Install
 
@@ -44,17 +45,34 @@ Sitemap / pages
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp config.yaml_example config.yaml
 ```
 
-## Config (`config.yaml`)
+## Config & Sources
+
+### Global Config (`config.yaml`)
 
 | Node | Purpose |
 |------|---------|
-| `objectstore` | S3 endpoint (`ssl: false` → HTTP, `true` → HTTPS) |
+| `objectstore` | S3 endpoint (`ssl: false` → HTTP, `true` → HTTPS), bucket (`odis`) |
 | `triplestore` | Oxigraph (`type: oxigraph`, `endpoint`) |
 | `search` | Elasticsearch (`type: elasticsearch`, `endpoint`, `index_prefix`) |
 | `summoner` | `threads`, `delay`, `user_agent`, **Browserless** `headless` URL + token/timeouts |
-| `sources[]` | Sitemap sources; `active: true`; set `headless: true` to use Browserless for that source |
+| `manager` | `max_parallel_processes` for parallel execution |
+
+### Sources (`sources.yaml`)
+
+Sitemap sources are defined in `sources.yaml`. You can generate this file automatically from the [ODIS catalogue](https://catalogue.odis.org/):
+
+```bash
+python make_sources.py
+```
+
+Each source in `sources.yaml` defines:
+- `name`: Unique source identifier (used in S3 prefixes, graph names, and ES indices)
+- `url`: Sitemap URL
+- `active`: Set `true` to include in runs
+- `headless`: Optional; set `true` to use Browserless for dynamic/JS-rendered sources
 
 ### Identity layout
 
@@ -162,7 +180,7 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 | `summoner.headless_token` | API token (`BROWSERLESS_TOKEN` env also works) |
 | `summoner.headless_concurrent` | Client-side max concurrent browser renders |
 | `summoner.headless_hybrid` | Static first, then Browserless if needed |
-| `sources[].headless` | Opt-in Browserless for that source |
+| `sources[].headless` (in `sources.yaml`) | Opt-in Browserless for that source |
 
 **Not a Cloudflare bypass.** Open-source Browserless does not solve bot walls (e.g. CIOOS HTML 403). 
 Headless only helps when JS actually injects JSON-LD into the DOM.
