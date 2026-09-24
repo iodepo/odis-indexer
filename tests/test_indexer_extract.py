@@ -196,3 +196,96 @@ def test_extract_nested_prefixed_defined_term() -> None:
     )
     assert doc["name"] == "Dataset with DefinedTerm"
     assert "Salinity" in doc["keywords"]
+
+
+def _docs(data) -> list[dict]:
+    return documents_from_jsonld_bytes(
+        json.dumps(data), source="s", s3_key="summoned/s/a.json", graph="urn:odis:s"
+    )
+
+
+def test_flattened_graph_indexes_like_nested() -> None:
+    # Flattened @graph as emitted by rdflib/CKAN (e.g. data.ioos.us): the
+    # Dataset's Place and GeoShape are sibling blank nodes linked by @id.
+    # The reference to another file (creator) is left for graph_resolver.
+    creator = {"@id": "https://w3id.org/marco-bolo/mbo_person"}
+    flattened = {
+        "@context": {"schema": "http://schema.org/"},
+        "@graph": [
+            {
+                "@id": "https://example.org/dataset/1",
+                "@type": "schema:Dataset",
+                "schema:name": "Cruise 1",
+                "schema:creator": creator,
+                "schema:spatialCoverage": {"@id": "_:Nplace"},
+            },
+            {"@id": "_:Nplace", "@type": "schema:Place", "schema:geo": {"@id": "_:Nshape"}},
+            {"@id": "_:Nshape", "@type": "schema:GeoShape", "schema:box": "26.38 -91.16 26.39 -90.795"},
+        ],
+    }
+    nested = {
+        "@context": {"schema": "http://schema.org/"},
+        "@id": "https://example.org/dataset/1",
+        "@type": "schema:Dataset",
+        "schema:name": "Cruise 1",
+        "schema:creator": creator,
+        "schema:spatialCoverage": {
+            "@type": "schema:Place",
+            "schema:geo": {"@type": "schema:GeoShape", "schema:box": "26.38 -91.16 26.39 -90.795"},
+        },
+    }
+    flat_docs, nested_docs = _docs(flattened), _docs(nested)
+    assert len(flat_docs) == len(nested_docs) == 1
+    for field in ("_id", "id", "type", "name", "description", "keywords", "url"):
+        assert flat_docs[0][field] == nested_docs[0][field]
+    jsonld = flat_docs[0]["jsonld"]
+    assert jsonld["schema:spatialCoverage"]["schema:geo"]["schema:box"] == "26.38 -91.16 26.39 -90.795"
+    assert jsonld["schema:creator"] == creator
+
+
+def test_yoast_graph_indexes_as_one_webpage() -> None:
+    # Yoast SEO (WordPress) links a page's parts with "#" IRIs, not blank nodes.
+    page = "https://example.org/news/item/"
+    data = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebPage",
+                "@id": page,
+                "name": "News item",
+                "isPartOf": {"@id": "https://example.org/#website"},
+                "breadcrumb": {"@id": page + "#breadcrumb"},
+                "primaryImageOfPage": {"@id": page + "#primaryimage"},
+            },
+            {"@type": "ImageObject", "@id": page + "#primaryimage", "url": "https://example.org/a.jpg"},
+            {"@type": "BreadcrumbList", "@id": page + "#breadcrumb", "itemListElement": []},
+            {
+                "@type": "WebSite",
+                "@id": "https://example.org/#website",
+                "name": "Example",
+                "publisher": {"@id": "https://example.org/#organization"},
+            },
+            {"@type": "Organization", "@id": "https://example.org/#organization", "name": "Example Org"},
+        ],
+    }
+    docs = _docs(data)
+    assert [d["_id"] for d in docs] == [page]
+    jsonld = docs[0]["jsonld"]
+    assert jsonld["breadcrumb"]["@type"] == "BreadcrumbList"
+    assert jsonld["primaryImageOfPage"]["url"] == "https://example.org/a.jpg"
+    assert jsonld["isPartOf"]["publisher"]["name"] == "Example Org"
+
+
+def test_self_reference_keeps_node_and_stays_a_reference() -> None:
+    # e.g. MARCO-BOLO Person files: no name, and a nested reference back to
+    # the Person. That doesn't make it a sub-node, and it isn't embedded in itself.
+    person = "https://w3id.org/marco-bolo/mbo_person"
+    data = {
+        "@id": person,
+        "@type": "Person",
+        "givenName": "Ada",
+        "subjectOf": {"@type": "Dataset", "about": {"@id": person}},
+    }
+    docs = _docs(data)
+    assert [d["_id"] for d in docs] == [person]
+    assert docs[0]["jsonld"]["subjectOf"]["about"] == {"@id": person}
