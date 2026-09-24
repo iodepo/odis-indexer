@@ -378,6 +378,52 @@ def extract_document(
     return doc
 
 
+def _is_node_ref(value: Any, nodes_by_id: dict[str, dict[str, Any]]) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"@id"}
+        and value["@id"] in nodes_by_id
+    )
+
+
+def _node_refs(value: Any, nodes_by_id: dict[str, dict[str, Any]]) -> list[str]:
+    """Ids of same-file nodes referenced as ``{"@id": ...}`` anywhere inside value."""
+    if _is_node_ref(value, nodes_by_id):
+        return [value["@id"]]
+    if isinstance(value, dict):
+        return [r for v in value.values() for r in _node_refs(v, nodes_by_id)]
+    if isinstance(value, list):
+        return [r for v in value for r in _node_refs(v, nodes_by_id)]
+    return []
+
+
+def _embed_nodes(
+    value: Any, nodes_by_id: dict[str, dict[str, Any]], seen: frozenset[str] = frozenset()
+) -> Any:
+    """Return a copy of value with same-file node references replaced by the node."""
+    if _is_node_ref(value, nodes_by_id):
+        ref = value["@id"]
+        if ref in seen:
+            return value
+        return _embed_nodes(nodes_by_id[ref], nodes_by_id, seen | {ref})
+    if isinstance(value, dict):
+        return {k: _embed_nodes(v, nodes_by_id, seen) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_embed_nodes(v, nodes_by_id, seen) for v in value]
+    return value
+
+
+def _referenced_ids(nodes: list[Any], nodes_by_id: dict[str, dict[str, Any]]) -> set[str]:
+    """Ids of nodes that another node in the same file references."""
+    return {
+        r
+        for n in nodes
+        if isinstance(n, dict)
+        for r in _node_refs(n, nodes_by_id)
+        if r != n.get("@id")
+    }
+
+
 def documents_from_jsonld_bytes(
     body: bytes | str,
     *,
@@ -414,13 +460,27 @@ def documents_from_jsonld_bytes(
         logger.warning("Unexpected JSON root type in %s: %s", s3_key, type(data))
         return []
 
+    # Flattened JSON-LD lists a page's supporting nodes as siblings linked by
+    # {"@id": ...}: e.g. rdflib/CKAN (data.ioos.us) emits a Dataset's Place,
+    # GeoShape, ContactPoint, ... as "_:" blank nodes, and Yoast SEO (WordPress)
+    # a WebPage's #breadcrumb, #primaryimage, ... as "#" IRIs. Index them as if
+    # they were nested: each node gets the same-file nodes it references
+    # embedded, and nodes referenced by another node get no document of their own.
+    nodes_by_id = {
+        n["@id"]: n for n in nodes if isinstance(n, dict) and isinstance(n.get("@id"), str)
+    }
+    referenced = _referenced_ids(nodes, nodes_by_id)
+
     docs: list[dict[str, Any]] = []
     for i, node in enumerate(nodes):
-        if not isinstance(node, dict):
+        if not isinstance(node, dict) or node.get("@id") in referenced:
             continue
+        node_id = node.get("@id")
+        # A node's references to itself stay references (not a nested copy of itself).
+        seen = frozenset({node_id}) if node_id in nodes_by_id else frozenset()
         docs.append(
             extract_document(
-                node,
+                _embed_nodes(node, nodes_by_id, seen),
                 source=source,
                 s3_key=s3_key,
                 graph=graph,
